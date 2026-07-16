@@ -29,6 +29,17 @@ fi
 
 echo "[grass-node] Starting Grass node (email: ${USER_EMAIL:-<not set>}, headless: ${HEADLESS})"
 
-# Hand off to the upstream image's entrypoint chain, which starts the VNC
-# server, noVNC and the Grass extension login/monitor script.
+echo "[grass-node] === browser/driver discovery ==="
+for b in google-chrome google-chrome-stable chromium chromium-browser; do
+    p=$(command -v "$b" 2>/dev/null || true)
+    echo "[grass-node]   $b -> ${p:-not on PATH}"
+    if [ -n "$p" ]; then "$p" --version 2>/dev/null || true; fi
+done
+for b in chromedriver; do
+    p=$(command -v "$b" 2>/dev/null || true)
+    echo "[grass-node]   $b -> ${p:-not on PATH}"
+    if [ -n "$p" ]; then "$p" --version 2>/dev/null || true; fi
+done
+echo "[grass-node] ================================="
+
 exec /usr/local/bin/customizable_entrypoint.sh
