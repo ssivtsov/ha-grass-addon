@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.1.1
+
+- **Persist the login across restarts.** The Grass desktop app's profile
+  (which holds the login token) now lives on `/data` instead of the
+  throwaway container filesystem, so a manual login only needs to be done
+  once — it survives add-on restarts and updates.
+- **Auto-login off by default.** The upstream keystroke automation can't
+  type an email address — it feeds the whole string to `xdotool key`, which
+  rejects the `@`/`.` characters (`Invalid key sequence`) — and it doesn't
+  follow Grass's current email → "Use Password Instead" → password flow.
+  Manual login through noVNC is now the default and, with the persistence
+  above, is a one-time action. `try_autologin` can still be set to `true`.
+- Clearer log guidance on the exact manual login steps.
+
 ## 2.1.0
 
 - **Switch to the real Grass desktop app** via
