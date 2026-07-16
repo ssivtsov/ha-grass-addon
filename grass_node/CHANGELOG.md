@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.2
+
+- Fix startup failure `Error initializing WebDriver: Unable to obtain driver
+  for chrome`. The upstream script relies on Selenium Manager auto-discovery,
+  which cannot find Debian's chromium/chromedriver; the add-on now installs
+  `chromium` and `chromium-driver` explicitly and patches the script at build
+  time to use explicit binary/driver paths (overridable via `CHROME_BIN` /
+  `CHROMEDRIVER_BIN`).
+
 ## 1.0.1
 
 - Make `vnc_password`, `vnc_resolution`, `headless` and `max_retry_multiplier`
