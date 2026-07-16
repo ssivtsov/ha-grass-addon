@@ -8,18 +8,17 @@ points by sharing your unused internet bandwidth.
 ## About
 
 Grass is a network that pays you for your unused internet bandwidth. This
-add-on wraps the community-maintained
-[`autonomylabxyz/grass`](https://hub.docker.com/r/autonomylabxyz/grass)
-Docker image (from
-[autonomylab-xyz/grass](https://github.com/autonomylab-xyz/grass)) so it runs
-as a native Home Assistant add-on:
+add-on runs the **official Grass desktop application** inside a noVNC session,
+wrapping the community-maintained
+[`mrcolorrain/grass-desktop`](https://hub.docker.com/r/mrcolorrain/grass-desktop)
+image (from [MRColorR/get-grass](https://github.com/MRColorR/get-grass)) as a
+native Home Assistant add-on:
 
-- Automatic login to your Grass account (headless Chromium with the official
-  Grass browser extension).
-- Built-in **status page** (port `8080`) showing connection state, network
-  quality and lifetime earnings.
-- Lightweight Alpine-based image — no VNC stack, low memory footprint.
-- Multi-arch: `amd64` and `aarch64`.
+- Runs the genuine Grass desktop app — it tries to log in automatically, and
+  if that fails you log in **by hand** through the noVNC web UI.
+- Built-in **noVNC web UI** (port `6080`) and **VNC** (port `5900`).
+- **amd64 only** — the Grass desktop app is an x86 Electron app and does not
+  run on ARM devices.
 
 ## Installation
 
@@ -30,15 +29,19 @@ as a native Home Assistant add-on:
 4. Open the **Configuration** tab and set your Grass account email and
    password (register at [app.getgrass.io](https://app.getgrass.io/register)
    if you don't have an account).
-5. Start the add-on and check the **Log** tab. Once connected, your device
-   will show up on the [Grass dashboard](https://app.getgrass.io).
+5. Start the add-on and open the **Web UI** (port `6080`). If auto-login
+   didn't succeed, log in by hand in the Grass app window shown there.
+6. Once connected, your device will show up on the
+   [Grass dashboard](https://app.getgrass.io).
 
 ## Configuration
 
 ```yaml
-user_email: you@example.com        # Grass account email (required)
-user_password: your-password       # Grass account password (required)
-allow_debug: false                 # upload debug screenshot on login failure
+user_email: you@example.com        # Grass account email (for auto-login)
+user_password: your-password       # Grass account password (for auto-login)
+try_autologin: true                # attempt auto-login; log in manually if it fails
+vnc_password: change-me            # noVNC / VNC access password
+vnc_resolution: 1280x720           # virtual screen resolution
 ```
 
 See the add-on **Documentation** tab for the full option reference and

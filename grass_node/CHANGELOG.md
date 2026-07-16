@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.1.0
+
+- **Switch to the real Grass desktop app** via
+  [`mrcolorrain/grass-desktop`](https://hub.docker.com/r/mrcolorrain/grass-desktop),
+  running inside noVNC. Both browser-automation images (`grass-node` and
+  `autonomylabxyz/grass`) failed at the same point — loading the Grass
+  login form — because Grass now blocks automated headless logins on its
+  login page. Running the genuine desktop app sidesteps that: it attempts
+  auto-login, and if that fails you log in **manually** through the noVNC
+  web UI, after which the session persists.
+- **Web UI is noVNC again** on port 6080 (VNC on 5900). The Web UI button
+  opens `/vnc.html` directly.
+- **Options:** `try_autologin` (default on) toggles the auto-login attempt;
+  `user_email`/`user_password` are now optional (leave blank to log in
+  entirely by hand); `vnc_password`/`vnc_resolution` are back.
+- **amd64 only:** the Grass desktop app is an x86 Electron app, so this
+  version targets `amd64`. (ARM hosts can't run the desktop app.)
+- `full_access` re-enabled so the desktop app runs like a plain
+  `docker run` — HA will show a security warning.
+
 ## 2.0.0
 
 - **Switch upstream image** from `mrcolorrain/grass-node` to

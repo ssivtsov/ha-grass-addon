@@ -3,63 +3,69 @@
 Run a [Grass](https://getgrass.io) node from Home Assistant and earn points by
 sharing your unused internet bandwidth.
 
-Since version 2.0.0 the add-on is built on top of the community-maintained
-[`autonomylabxyz/grass`](https://hub.docker.com/r/autonomylabxyz/grass)
-image (source: [autonomylab-xyz/grass](https://github.com/autonomylab-xyz/grass)).
-It runs a headless Chromium with the official Grass extension, logs into your
-Grass account automatically and keeps the connection alive. A small status
-page shows the connection state, network quality and lifetime earnings.
+Since version 2.1.0 the add-on runs the **official Grass desktop application**
+inside a noVNC session, using the community-maintained
+[`mrcolorrain/grass-desktop`](https://hub.docker.com/r/mrcolorrain/grass-desktop)
+image (source: [MRColorR/get-grass](https://github.com/MRColorR/get-grass)).
+
+## Why the desktop app?
+
+Earlier versions logged into `app.getgrass.io` by automating a headless
+browser. Grass has since hardened its login page against automated logins,
+so every browser-automation image now fails at the "loading login form" step.
+Running the genuine desktop app avoids that: it tries to log in for you, and
+if that fails you can log in **by hand** through the noVNC web UI. Once you're
+logged in, the session persists.
 
 ## Prerequisites
 
-You need a Grass account. If you don't have one yet, register at
-[app.getgrass.io](https://app.getgrass.io/register).
+- A Grass account — register at
+  [app.getgrass.io](https://app.getgrass.io/register) if you don't have one.
+- An **amd64 / x86-64** Home Assistant host. The Grass desktop app is an x86
+  Electron application and does not run on ARM devices (Raspberry Pi, etc.).
 
 ## Configuration
 
 | Option | Required | Description |
 | ------ | -------- | ----------- |
-| `user_email` | yes | The email of your Grass account. |
-| `user_password` | yes | The password of your Grass account. |
-| `allow_debug` | no | On login failure, capture a screenshot/browser log and upload them to a public image host for troubleshooting. Default: `false`. |
+| `user_email` | no | Grass account email, used for auto-login. Leave blank to log in entirely by hand. |
+| `user_password` | no | Grass account password, used for auto-login. |
+| `try_autologin` | no | Attempt automatic login with the email/password above. Default: `true`. |
+| `vnc_password` | no | Password for the noVNC / VNC interface. Default: `money4band`. |
+| `vnc_resolution` | no | Virtual screen resolution, e.g. `1280x720`. |
 
 Example:
 
 ```yaml
 user_email: you@example.com
 user_password: your-grass-password
-allow_debug: false
+try_autologin: true
+vnc_password: change-me
+vnc_resolution: 1280x720
 ```
 
-Options from 1.x (`vnc_password`, `vnc_resolution`, `headless`,
-`max_retry_multiplier`) are deprecated and ignored — you can remove them from
-your configuration.
+## Logging in
 
-## Web UI (status page)
-
-After the add-on starts, open the Web UI from the add-on page (or navigate to
-`http://<home-assistant-host>:8080`). It returns the current connection
-status, network quality and earnings. There is no VNC interface anymore —
-the browser always runs headless.
+1. Start the add-on and open the **Web UI** (port `6080`) from the add-on
+   page, or navigate to `http://<home-assistant-host>:6080/vnc.html`.
+2. Enter the VNC password (`vnc_password`) to see the Grass desktop app.
+3. If auto-login succeeded, you'll see the app already logged in. If not,
+   log in manually in the app window (enter your credentials, solve any
+   CAPTCHA). The session then persists across restarts.
 
 ## Verifying it works
 
-1. Check the add-on log — you should see the login being performed and the
-   extension connecting.
-2. Open the Web UI — it should report a connected status.
-3. Open the [Grass dashboard](https://app.getgrass.io) — your device should
+1. In the noVNC view the Grass app should show your account **connected**.
+2. Open the [Grass dashboard](https://app.getgrass.io) — your device should
    appear as connected and start accumulating points.
 
 ## Notes & troubleshooting
 
-- **Architectures:** `amd64` and `aarch64` are supported (separate upstream
-  tags, selected automatically at build time).
+- **amd64 only** — see Prerequisites. On ARM the add-on will not be offered.
+- **Auto-login fails?** That's expected if Grass shows a CAPTCHA. Just log in
+  manually through noVNC once.
 - **One node per IP:** Grass rewards are typically limited per public IP.
-  Running multiple nodes behind the same IP will not multiply earnings.
-- **Resources:** headless Chromium typically uses a few hundred MB of RAM —
-  noticeably less than the 1.x VNC-based image.
-- **Login failures:** if the log shows a login error, verify the credentials,
-  then optionally enable `allow_debug` to capture a screenshot of what the
-  browser saw (note: the screenshot is uploaded to a public image host).
-- This is an **unofficial** community add-on and is not affiliated with
-  Grass / Wynd Network. Use at your own discretion.
+- **Security warning:** the add-on runs with `full_access` so the desktop app
+  behaves like a plain `docker run`. HA flags this — it's expected.
+- This is an **unofficial** community add-on, not affiliated with Grass /
+  Wynd Network. Use at your own discretion.
