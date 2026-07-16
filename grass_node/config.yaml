@@ -1,6 +1,6 @@
 name: "Grass Node"
 description: "Run a Grass (getgrass.io) node to share unused bandwidth and earn points"
-version: "1.0.5"
+version: "1.0.6"
 slug: "grass_node"
 url: "https://github.com/ssivtsov/ha-grass-addon"
 init: false
@@ -15,7 +15,7 @@ ports:
 ports_description:
   5900/tcp: "VNC (connect with a VNC client)"
   6080/tcp: "noVNC web interface (browser access)"
-webui: "http://[HOST]:[PORT:6080]/"
+webui: "http://[HOST]:[PORT:6080]/vnc.html"
 options:
   user_email: ""
   user_password: ""
@@ -32,4 +32,5 @@ schema:
   max_retry_multiplier: int(1,10)?
 panel_icon: "mdi:grass"
 panel_title: "Grass Node"
+full_access: true
 ingress: false
