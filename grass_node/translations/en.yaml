@@ -1,0 +1,26 @@
+configuration:
+  user_email:
+    name: Grass account email
+    description: The email address of your getgrass.io account.
+  user_password:
+    name: Grass account password
+    description: The password of your getgrass.io account.
+  vnc_password:
+    name: VNC password
+    description: Password used to access the VNC / noVNC interface.
+  vnc_resolution:
+    name: VNC resolution
+    description: Virtual screen resolution, for example 1280x720.
+  headless:
+    name: Headless mode
+    description: >-
+      Run the browser without a visible UI to reduce resource usage.
+      The noVNC view will not show the browser when enabled.
+  max_retry_multiplier:
+    name: Max retry multiplier
+    description: >-
+      Multiplier for the exponential backoff used when login or extension
+      status checks fail.
+network:
+  5900/tcp: VNC server port.
+  6080/tcp: noVNC web interface port.
