@@ -15,9 +15,10 @@ RUN chmod +x /usr/local/bin/google-chrome
 
 # Prepend a monkeypatch to grass-node_main.py that:
 #   1. Bypasses Selenium Manager by using explicit ChromeService path
-#   2. Sets binary_location to our wrapper (adds container flags to Chromium)
-#   3. Injects required container flags directly into ChromeOptions so they
-#      are always applied regardless of how the wrapper is invoked
+#   2. Sets binary_location to our wrapper
+#   3. Adds only the two GPU flags needed to prevent Chromium crashes in
+#      containers — --no-zygote was causing renderer crashes, so it is
+#      intentionally omitted here
 RUN python3 - << 'PATCH'
 patch = """\
 from selenium.webdriver.chrome.service import Service as _ChromeService
@@ -29,14 +30,7 @@ def _patched_chrome_init(self, options=None, service=None, keep_alive=True, **kw
     if options is not None:
         if not getattr(options, 'binary_location', ''):
             options.binary_location = '/usr/local/bin/google-chrome'
-        for _flag in [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-gpu',
-            '--disable-software-rasterizer',
-            '--disable-dev-shm-usage',
-            '--no-zygote',
-        ]:
+        for _flag in ['--disable-gpu', '--disable-software-rasterizer']:
             options.add_argument(_flag)
     _orig_chrome_init(self, options=options, service=service, keep_alive=keep_alive, **kwargs)
 _wd.Chrome.__init__ = _patched_chrome_init

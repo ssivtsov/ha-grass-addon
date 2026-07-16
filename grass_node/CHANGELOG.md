@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.11
+
+- Chromium crash after 30 seconds of page loading: `--no-zygote` (added
+  in 1.0.10) interferes with renderer processes and extension loading —
+  removed. Reduce injected flags to the minimal set that prevents GPU
+  crashes: `--disable-gpu` and `--disable-software-rasterizer` only. The
+  upstream script already sets the sandbox and /dev/shm flags itself.
+
 ## 1.0.10
 
 - Chromium crash (`Connection refused` / raw stacktrace) after session
