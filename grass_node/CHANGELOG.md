@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.7
+
+- Restore ChromeService patch and `google-chrome.sh` wrapper (removed in
+  1.0.6). `full_access: true` fixes container privilege issues but does not
+  help Selenium Manager locate Debian's chromedriver — explicit
+  `ChromeService('/usr/bin/chromedriver')` and `binary_location` are still
+  required. Also installs `chromium` and `chromium-driver` explicitly so the
+  paths are guaranteed to exist.
+
 ## 1.0.6
 
 - Switch to `full_access: true` in the addon config. This runs the
