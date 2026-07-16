@@ -1,27 +1,33 @@
 configuration:
   user_email:
     name: Grass account email
-    description: The email address of your getgrass.io account.
+    description: >-
+      The email of your getgrass.io account. Used for auto-login. Leave
+      empty to log in entirely by hand through the noVNC web UI.
   user_password:
     name: Grass account password
-    description: The password of your getgrass.io account.
-  allow_debug:
-    name: Allow debug
+    description: The password of your getgrass.io account (used for auto-login).
+  try_autologin:
+    name: Try auto-login
     description: >-
-      On login failure, capture a screenshot and browser log and upload
-      them to a public image host for troubleshooting. Leave disabled
-      unless you need it — the upload is publicly accessible.
+      Attempt to log into the Grass desktop app automatically with the
+      email/password above. If Grass shows a CAPTCHA or auto-login fails,
+      open the noVNC web UI and log in manually — the session then persists.
   vnc_password:
-    name: VNC password (deprecated)
-    description: No longer used since 2.0.0; safe to remove.
+    name: VNC password
+    description: Password to access the noVNC / VNC interface. Default: money4band.
   vnc_resolution:
-    name: VNC resolution (deprecated)
-    description: No longer used since 2.0.0; safe to remove.
+    name: VNC resolution
+    description: Virtual screen resolution, for example 1280x720.
+  allow_debug:
+    name: Allow debug (deprecated)
+    description: No longer used; safe to remove.
   headless:
     name: Headless mode (deprecated)
-    description: No longer used since 2.0.0; the node always runs headless.
+    description: No longer used; safe to remove.
   max_retry_multiplier:
     name: Max retry multiplier (deprecated)
-    description: No longer used since 2.0.0; safe to remove.
+    description: No longer used; safe to remove.
 network:
-  80/tcp: Status page showing connection state, network quality and earnings.
+  5900/tcp: VNC server port.
+  6080/tcp: noVNC web interface port.
