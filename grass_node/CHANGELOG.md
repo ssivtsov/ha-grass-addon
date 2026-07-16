@@ -9,6 +9,9 @@
   wrapper scripts. Removes `patch-webdriver.py` and `google-chrome.sh`.
   Note: HA will show a security warning for this addon because of the
   elevated privileges.
+- Fix the Web UI link: point `webui` to `/vnc.html` so the HA "Open Web
+  UI" button lands directly on the noVNC viewer instead of the directory
+  listing.
 
 ## 1.0.5
 
