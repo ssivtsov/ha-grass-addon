@@ -1,6 +1,6 @@
 name: "Grass Node"
 description: "Run a Grass (getgrass.io) node to share unused bandwidth and earn points"
-version: "2.1.0"
+version: "2.1.1"
 slug: "grass_node"
 url: "https://github.com/ssivtsov/ha-grass-addon"
 init: false
@@ -18,7 +18,7 @@ webui: "http://[HOST]:[PORT:6080]/vnc.html"
 options:
   user_email: ""
   user_password: ""
-  try_autologin: true
+  try_autologin: false
   vnc_password: "money4band"
   vnc_resolution: "1280x720"
 schema:

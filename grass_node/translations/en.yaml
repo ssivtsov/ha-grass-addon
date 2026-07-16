@@ -10,9 +10,10 @@ configuration:
   try_autologin:
     name: Try auto-login
     description: >-
-      Attempt to log into the Grass desktop app automatically with the
-      email/password above. If Grass shows a CAPTCHA or auto-login fails,
-      open the noVNC web UI and log in manually — the session then persists.
+      Off by default. When on, the add-on attempts an automatic login with
+      the email/password above. Grass's current login page makes this
+      unreliable, so the recommended path is to log in manually once through
+      the noVNC web UI — the session is saved to /data and persists.
   vnc_password:
     name: VNC password
     description: Password to access the noVNC / VNC interface. Default: money4band.

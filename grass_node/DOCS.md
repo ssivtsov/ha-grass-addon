@@ -44,14 +44,29 @@ vnc_password: change-me
 vnc_resolution: 1280x720
 ```
 
-## Logging in
+## Logging in (manual — one time)
+
+Auto-login is disabled by default because Grass's login flow (email → code /
+"Use Password Instead" → password) can't be driven reliably by the upstream
+keystroke automation. Logging in by hand once is the reliable path, and the
+session is now saved to `/data`, so you only do this once — it survives
+add-on restarts and updates.
 
 1. Start the add-on and open the **Web UI** (port `6080`) from the add-on
    page, or navigate to `http://<home-assistant-host>:6080/vnc.html`.
 2. Enter the VNC password (`vnc_password`) to see the Grass desktop app.
-3. If auto-login succeeded, you'll see the app already logged in. If not,
-   log in manually in the app window (enter your credentials, solve any
-   CAPTCHA). The session then persists across restarts.
+3. In the app's **Sign In** panel:
+   - Type your **email**, click **CONTINUE**.
+   - Grass emails you a 6-digit code — either enter it, or click
+     **Use Password Instead** and type your password.
+   - Click **SIGN IN**.
+4. That's it. The login is saved; you won't need to repeat it.
+
+### Auto-login (optional, unreliable)
+
+If you want the add-on to *attempt* auto-login on start, set
+`try_autologin: true`. Note it frequently fails against Grass's current login
+page — if it does, just finish the login manually as above.
 
 ## Verifying it works
 
@@ -62,8 +77,11 @@ vnc_resolution: 1280x720
 ## Notes & troubleshooting
 
 - **amd64 only** — see Prerequisites. On ARM the add-on will not be offered.
-- **Auto-login fails?** That's expected if Grass shows a CAPTCHA. Just log in
-  manually through noVNC once.
+- **Auto-login fails?** That's expected — it's off by default. Just log in
+  manually through noVNC once; the session is saved to `/data`.
+- **Login lost after a restart?** The profile is persisted under
+  `/data/app-config`. If you removed the add-on (not just restarted it) that
+  data is deleted and you'll need to log in again.
 - **One node per IP:** Grass rewards are typically limited per public IP.
 - **Security warning:** the add-on runs with `full_access` so the desktop app
   behaves like a plain `docker run`. HA flags this — it's expected.
