@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.4
+
+- Replace Python script patching with a clean shell wrapper (`google-chrome.sh`
+  installed as `/usr/local/bin/google-chrome`). Selenium Manager finds the
+  wrapper on PATH, which calls the system Chromium with all required container
+  flags (`--no-sandbox`, `--disable-setuid-sandbox`, `--disable-gpu`,
+  `--disable-software-rasterizer`, `--disable-dev-shm-usage`,
+  `--single-process`). System chromedriver is pointed at via `SE_DRIVER_LOCATION`
+  env var, bypassing any internet download attempt.
+
 ## 1.0.3
 
 - Fix Chromium crash during page navigation in containerised environments

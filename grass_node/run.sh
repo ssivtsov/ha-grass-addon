@@ -20,6 +20,10 @@ export USER_PASSWORD
 export HEADLESS="$HEADLESS_OPT"
 export MAX_RETRY_MULTIPLIER="$MAX_RETRY_MULTIPLIER_OPT"
 
+# Tell Selenium Manager to use the system chromedriver directly, skipping
+# any attempt to download one from the internet.
+export SE_DRIVER_LOCATION=/usr/bin/chromedriver
+
 if [ -n "$VNC_PASSWORD_OPT" ]; then
     export VNC_PASSWORD="$VNC_PASSWORD_OPT"
 fi
