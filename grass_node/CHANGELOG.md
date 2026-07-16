@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.10
+
+- Chromium crash (`Connection refused` / raw stacktrace) after session
+  creation: add required container flags (`--no-sandbox`,
+  `--disable-setuid-sandbox`, `--disable-gpu`, `--disable-software-rasterizer`,
+  `--disable-dev-shm-usage`, `--no-zygote`) directly to `ChromeOptions` via
+  the prepend patch so they are applied by chromedriver regardless of the
+  binary path chain.
+
 ## 1.0.9
 
 - Replace `sitecustomize.py` (which was silently not loading in this image)

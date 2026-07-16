@@ -13,9 +13,11 @@ RUN apt-get update \
 COPY google-chrome.sh /usr/local/bin/google-chrome
 RUN chmod +x /usr/local/bin/google-chrome
 
-# Prepend a monkeypatch to grass-node_main.py so that every
-# webdriver.Chrome() call uses explicit chromedriver/binary paths,
-# bypassing Selenium Manager which cannot find Debian's chromedriver.
+# Prepend a monkeypatch to grass-node_main.py that:
+#   1. Bypasses Selenium Manager by using explicit ChromeService path
+#   2. Sets binary_location to our wrapper (adds container flags to Chromium)
+#   3. Injects required container flags directly into ChromeOptions so they
+#      are always applied regardless of how the wrapper is invoked
 RUN python3 - << 'PATCH'
 patch = """\
 from selenium.webdriver.chrome.service import Service as _ChromeService
@@ -24,8 +26,18 @@ _orig_chrome_init = _wd.Chrome.__init__
 def _patched_chrome_init(self, options=None, service=None, keep_alive=True, **kwargs):
     if service is None:
         service = _ChromeService('/usr/bin/chromedriver')
-    if options is not None and not getattr(options, 'binary_location', ''):
-        options.binary_location = '/usr/local/bin/google-chrome'
+    if options is not None:
+        if not getattr(options, 'binary_location', ''):
+            options.binary_location = '/usr/local/bin/google-chrome'
+        for _flag in [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-gpu',
+            '--disable-software-rasterizer',
+            '--disable-dev-shm-usage',
+            '--no-zygote',
+        ]:
+            options.add_argument(_flag)
     _orig_chrome_init(self, options=options, service=service, keep_alive=keep_alive, **kwargs)
 _wd.Chrome.__init__ = _patched_chrome_init
 """
