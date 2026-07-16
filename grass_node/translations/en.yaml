@@ -5,22 +5,23 @@ configuration:
   user_password:
     name: Grass account password
     description: The password of your getgrass.io account.
+  allow_debug:
+    name: Allow debug
+    description: >-
+      On login failure, capture a screenshot and browser log and upload
+      them to a public image host for troubleshooting. Leave disabled
+      unless you need it — the upload is publicly accessible.
   vnc_password:
-    name: VNC password
-    description: Password used to access the VNC / noVNC interface.
+    name: VNC password (deprecated)
+    description: No longer used since 2.0.0; safe to remove.
   vnc_resolution:
-    name: VNC resolution
-    description: Virtual screen resolution, for example 1280x720.
+    name: VNC resolution (deprecated)
+    description: No longer used since 2.0.0; safe to remove.
   headless:
-    name: Headless mode
-    description: >-
-      Run the browser without a visible UI to reduce resource usage.
-      The noVNC view will not show the browser when enabled.
+    name: Headless mode (deprecated)
+    description: No longer used since 2.0.0; the node always runs headless.
   max_retry_multiplier:
-    name: Max retry multiplier
-    description: >-
-      Multiplier for the exponential backoff used when login or extension
-      status checks fail.
+    name: Max retry multiplier (deprecated)
+    description: No longer used since 2.0.0; safe to remove.
 network:
-  5900/tcp: VNC server port.
-  6080/tcp: noVNC web interface port.
+  80/tcp: Status page showing connection state, network quality and earnings.

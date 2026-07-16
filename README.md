@@ -9,15 +9,16 @@ points by sharing your unused internet bandwidth.
 
 Grass is a network that pays you for your unused internet bandwidth. This
 add-on wraps the community-maintained
-[`mrcolorrain/grass-node`](https://hub.docker.com/r/mrcolorrain/grass-node)
-Docker image (from [MRColorR/get-grass](https://github.com/MRColorR/get-grass))
-so it runs as a native Home Assistant add-on:
+[`autonomylabxyz/grass`](https://hub.docker.com/r/autonomylabxyz/grass)
+Docker image (from
+[autonomylab-xyz/grass](https://github.com/autonomylab-xyz/grass)) so it runs
+as a native Home Assistant add-on:
 
-- Automatic login to your Grass account (Selenium-driven Chromium with the
-  official Grass browser extension).
-- Built-in **noVNC web UI** (port `6080`) and **VNC** (port `5900`) so you can
-  watch the browser session or log in manually if needed.
-- Automatic reconnect / retry with exponential backoff.
+- Automatic login to your Grass account (headless Chromium with the official
+  Grass browser extension).
+- Built-in **status page** (port `8080`) showing connection state, network
+  quality and lifetime earnings.
+- Lightweight Alpine-based image — no VNC stack, low memory footprint.
 - Multi-arch: `amd64` and `aarch64`.
 
 ## Installation
@@ -37,10 +38,7 @@ so it runs as a native Home Assistant add-on:
 ```yaml
 user_email: you@example.com        # Grass account email (required)
 user_password: your-password       # Grass account password (required)
-vnc_password: change-me            # noVNC / VNC access password
-vnc_resolution: 1280x720           # virtual screen resolution
-headless: false                    # run browser without UI (saves RAM)
-max_retry_multiplier: 3            # retry backoff multiplier (1-10)
+allow_debug: false                 # upload debug screenshot on login failure
 ```
 
 See the add-on **Documentation** tab for the full option reference and

@@ -1,45 +1,28 @@
-#!/usr/bin/env bash
+#!/bin/sh
 set -e
 
 CONFIG_PATH=/data/options.json
 
 USER_EMAIL="$(jq -r '.user_email // empty' "$CONFIG_PATH")"
 USER_PASSWORD="$(jq -r '.user_password // empty' "$CONFIG_PATH")"
-VNC_PASSWORD_OPT="$(jq -r '.vnc_password // empty' "$CONFIG_PATH")"
-VNC_RESOLUTION_OPT="$(jq -r '.vnc_resolution // empty' "$CONFIG_PATH")"
-HEADLESS_OPT="$(jq -r '.headless // false' "$CONFIG_PATH")"
-MAX_RETRY_MULTIPLIER_OPT="$(jq -r '.max_retry_multiplier // 3' "$CONFIG_PATH")"
+ALLOW_DEBUG_OPT="$(jq -r '.allow_debug // false' "$CONFIG_PATH")"
 
 if [ -z "$USER_EMAIL" ] || [ -z "$USER_PASSWORD" ]; then
-    echo "[grass-node] WARNING: user_email / user_password are not set in the add-on configuration."
-    echo "[grass-node] Automatic login will fail. You can still log in manually via the noVNC web UI (port 6080)."
+    echo "[grass-node] ERROR: user_email / user_password are not set in the add-on configuration."
+    echo "[grass-node] Set them in the Configuration tab and restart the add-on."
+    exit 1
 fi
 
-export USER_EMAIL
-export USER_PASSWORD
-export HEADLESS="$HEADLESS_OPT"
-export MAX_RETRY_MULTIPLIER="$MAX_RETRY_MULTIPLIER_OPT"
-
-if [ -n "$VNC_PASSWORD_OPT" ]; then
-    export VNC_PASSWORD="$VNC_PASSWORD_OPT"
-fi
-if [ -n "$VNC_RESOLUTION_OPT" ]; then
-    export VNC_RESOLUTION="$VNC_RESOLUTION_OPT"
+export GRASS_USER="$USER_EMAIL"
+export GRASS_PASS="$USER_PASSWORD"
+if [ "$ALLOW_DEBUG_OPT" = "true" ]; then
+    export ALLOW_DEBUG="True"
+else
+    export ALLOW_DEBUG="False"
 fi
 
-echo "[grass-node] Starting Grass node (email: ${USER_EMAIL:-<not set>}, headless: ${HEADLESS})"
+echo "[grass-node] Starting Grass node (email: ${USER_EMAIL})"
+echo "[grass-node] Status page will be available on the mapped port (Web UI button)."
 
-echo "[grass-node] === browser/driver discovery ==="
-for b in google-chrome google-chrome-stable chromium chromium-browser; do
-    p=$(command -v "$b" 2>/dev/null || true)
-    echo "[grass-node]   $b -> ${p:-not on PATH}"
-    if [ -n "$p" ]; then "$p" --version 2>/dev/null || true; fi
-done
-for b in chromedriver; do
-    p=$(command -v "$b" 2>/dev/null || true)
-    echo "[grass-node]   $b -> ${p:-not on PATH}"
-    if [ -n "$p" ]; then "$p" --version 2>/dev/null || true; fi
-done
-echo "[grass-node] ================================="
-
-exec /usr/local/bin/customizable_entrypoint.sh
+cd /usr/src/app
+exec python ./main.py
