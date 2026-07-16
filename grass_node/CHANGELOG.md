@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.9
+
+- Replace `sitecustomize.py` (which was silently not loading in this image)
+  with a build-time prepend to `grass-node_main.py`. The monkeypatch is
+  written to the top of the upstream script during `docker build` — no path
+  discovery, no try/except hiding failures. Patches `_wd.Chrome.__init__`
+  via method replacement so it works regardless of how the script calls
+  `webdriver.Chrome()`.
+
 ## 1.0.8
 
 - Replace `patch-webdriver.py` (fragile regex source patching) with
