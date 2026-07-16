@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.12
+
+- Remove `binary_location` / `google-chrome.sh` wrapper from the patch.
+  The Debian `chromium` and `chromium-driver` packages are version-matched;
+  chromedriver finds `/usr/bin/chromium` directly without a wrapper detour.
+  This eliminates a potential version-mismatch source for the crash.
+- Add browser/driver discovery logging at startup so versions can be
+  verified in the HA log.
+
 ## 1.0.11
 
 - Chromium crash after 30 seconds of page loading: `--no-zygote` (added
