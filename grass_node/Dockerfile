@@ -13,10 +13,10 @@ RUN apt-get update \
 COPY google-chrome.sh /usr/local/bin/google-chrome
 RUN chmod +x /usr/local/bin/google-chrome
 
-# Patch grass-node_main.py to use explicit ChromeService path instead of
-# Selenium Manager auto-discovery, which cannot find Debian's chromedriver.
-COPY patch-webdriver.py /patch-webdriver.py
-RUN python3 /patch-webdriver.py && rm /patch-webdriver.py
+# sitecustomize.py is imported by Python before any user script. It patches
+# selenium.webdriver.Chrome to use explicit chromedriver/binary paths,
+# bypassing Selenium Manager without needing to touch the upstream script.
+COPY sitecustomize.py /usr/lib/python3/dist-packages/sitecustomize.py
 
 COPY run.sh /run.sh
 RUN chmod +x /run.sh

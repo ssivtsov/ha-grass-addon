@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.8
+
+- Replace `patch-webdriver.py` (fragile regex source patching) with
+  `sitecustomize.py`. Python automatically imports `sitecustomize` before
+  any user script, so this patches `selenium.webdriver.Chrome` at the class
+  level regardless of how the upstream script calls it — no source inspection
+  required. Sets explicit `ChromeService('/usr/bin/chromedriver')` and
+  `binary_location='/usr/local/bin/google-chrome'` on every Chrome instance.
+
 ## 1.0.7
 
 - Restore ChromeService patch and `google-chrome.sh` wrapper (removed in
