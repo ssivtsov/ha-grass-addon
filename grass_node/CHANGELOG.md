@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.0.0
+
+- **Switch upstream image** from `mrcolorrain/grass-node` to
+  [`autonomylabxyz/grass`](https://github.com/autonomylab-xyz/grass). The
+  1.x image's Selenium login consistently timed out waiting for the Grass
+  login page in HA's environment. The new image runs headless Chromium with
+  the Grass extension, uses an explicit chromedriver fallback (no Selenium
+  Manager), and needs no patches or wrapper scripts at all.
+- **Web UI replaced:** instead of noVNC/VNC (ports 6080/5900), the add-on now
+  serves a small status page on port 8080 with connection state, network
+  quality and earnings.
+- **New option:** `allow_debug` — on login failure, upload a screenshot and
+  browser log to a public image host for troubleshooting (off by default).
+- **Deprecated options:** `vnc_password`, `vnc_resolution`, `headless`,
+  `max_retry_multiplier` are now ignored and can be removed from the
+  configuration.
+- `full_access` privilege is no longer required and has been removed —
+  the security warning in HA disappears.
+
 ## 1.0.12
 
 - Remove `binary_location` / `google-chrome.sh` wrapper from the patch.
