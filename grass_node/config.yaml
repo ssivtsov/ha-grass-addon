@@ -1,0 +1,35 @@
+name: "Grass Node"
+description: "Run a Grass (getgrass.io) node to share unused bandwidth and earn points"
+version: "1.0.0"
+slug: "grass_node"
+url: "https://github.com/ssivtsov/ha-grass-addon"
+init: false
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+ports:
+  5900/tcp: 5900
+  6080/tcp: 6080
+ports_description:
+  5900/tcp: "VNC (connect with a VNC client)"
+  6080/tcp: "noVNC web interface (browser access)"
+webui: "http://[HOST]:[PORT:6080]/"
+options:
+  user_email: ""
+  user_password: ""
+  vnc_password: "money4band"
+  vnc_resolution: "1280x720"
+  headless: false
+  max_retry_multiplier: 3
+schema:
+  user_email: str
+  user_password: password
+  vnc_password: password
+  vnc_resolution: str
+  headless: bool
+  max_retry_multiplier: int(1,10)
+panel_icon: "mdi:grass"
+panel_title: "Grass Node"
+ingress: false

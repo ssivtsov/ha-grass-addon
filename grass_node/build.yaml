@@ -1,0 +1,3 @@
+build_from:
+  amd64: mrcolorrain/grass-node:latest
+  aarch64: mrcolorrain/grass-node:latest
