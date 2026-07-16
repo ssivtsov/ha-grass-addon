@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.5
+
+- Re-add minimal Python patch alongside the `google-chrome.sh` wrapper.
+  `SE_DRIVER_LOCATION` env var is not honoured by the Selenium version in
+  the base image. The patch wires `binary_location` to the wrapper and
+  uses an explicit `ChromeService('/usr/bin/chromedriver')` — the only
+  reliable way to bypass Selenium Manager's automatic (and failing) driver
+  discovery in this environment.
+
 ## 1.0.4
 
 - Replace Python script patching with a clean shell wrapper (`google-chrome.sh`
