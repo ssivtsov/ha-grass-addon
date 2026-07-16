@@ -1,6 +1,6 @@
 name: "Grass Node"
 description: "Run a Grass (getgrass.io) node to share unused bandwidth and earn points"
-version: "1.0.5"
+version: "1.0.6"
 slug: "grass_node"
 url: "https://github.com/ssivtsov/ha-grass-addon"
 init: false
@@ -32,4 +32,5 @@ schema:
   max_retry_multiplier: int(1,10)?
 panel_icon: "mdi:grass"
 panel_title: "Grass Node"
+full_access: true
 ingress: false

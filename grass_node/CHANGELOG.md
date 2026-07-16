@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.6
+
+- Switch to `full_access: true` in the addon config. This runs the
+  upstream `mrcolorrain/grass-node` image with full host privileges
+  (equivalent to `docker run --privileged`), which lets Selenium and
+  Chromium work in HA's container environment without any patches or
+  wrapper scripts. Removes `patch-webdriver.py` and `google-chrome.sh`.
+  Note: HA will show a security warning for this addon because of the
+  elevated privileges.
+
 ## 1.0.5
 
 - Re-add minimal Python patch alongside the `google-chrome.sh` wrapper.
