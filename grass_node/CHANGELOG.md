@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3
+
+- Fix Chromium crash during page navigation in containerised environments
+  (`Error during login: Message: ` with raw stacktrace). Add
+  `--disable-gpu` and `--disable-software-rasterizer` Chrome flags via the
+  build-time patch; these are required when no GPU hardware is available.
+
 ## 1.0.2
 
 - Fix startup failure `Error initializing WebDriver: Unable to obtain driver
