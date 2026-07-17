@@ -58,7 +58,7 @@ DEFAULT_EMAIL_XY = "175,225"
 DEFAULT_CONTINUE_XY = "175,296"
 DEFAULT_USEPASS_XY = "175,475"
 DEFAULT_PASSWORD_XY = "175,225"
-DEFAULT_SIGNIN_XY = "175,296"
+DEFAULT_SIGNIN_XY = "175,340"
 
 
 # ---------------------------------------------------------------------------
