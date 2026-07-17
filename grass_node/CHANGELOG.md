@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.4
+
+- **Debug screenshots now go to `/share/grass-debug/`** instead of the
+  add-on's private `/data`, so they can be browsed with the File editor,
+  Samba, or Studio Code Server add-ons. Maps `share:rw`. Falls back to
+  `/data` if `/share` is not available.
+
 ## 2.1.3
 
 - **Fix auto-login getting stuck on the email screen.** Grass's login form
