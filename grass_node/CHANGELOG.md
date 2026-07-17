@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.8
+
+- **Fix SIGN IN coordinate on the password screen.** The password screen has a
+  different layout to the email screen: "Forgot Password?" sits at y≈284 and the
+  SIGN IN button is at y≈340.  The previous default `signin_xy: "175,296"` hit
+  "Forgot Password?" instead of SIGN IN.  Default corrected to `"175,340"`.
+  (CDP fell back to coordinates in v2.1.7 because `/usr/bin/grass` does not
+  forward `--remote-debugging-port` to the Electron binary; the coordinate
+  fallback path now has all four positions correct.)
+
 ## 2.1.7
 
 - **DOM-based button clicks via Chrome DevTools Protocol (CDP).** The Grass
