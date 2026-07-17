@@ -1,9 +1,10 @@
 ARG BUILD_FROM=mrcolorrain/grass-desktop:latest
 FROM ${BUILD_FROM}
 
-# Debian base; jq reads /data/options.json in run.sh.
+# Debian base; jq reads /data/options.json in run.sh, scrot captures optional
+# debug screenshots of the login flow.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends jq \
+    && apt-get install -y --no-install-recommends jq scrot \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

@@ -6,7 +6,10 @@ CONFIG_PATH=/data/options.json
 USER_EMAIL="$(jq -r '.user_email // empty' "$CONFIG_PATH")"
 USER_PASSWORD="$(jq -r '.user_password // empty' "$CONFIG_PATH")"
 TRY_AUTOLOGIN_OPT="$(jq -r '.try_autologin // true' "$CONFIG_PATH")"
+CONTINUE_TABS_OPT="$(jq -r '.continue_tabs // empty' "$CONFIG_PATH")"
 PASSWORD_LINK_TABS_OPT="$(jq -r '.password_link_tabs // empty' "$CONFIG_PATH")"
+SIGNIN_TABS_OPT="$(jq -r '.signin_tabs // empty' "$CONFIG_PATH")"
+DEBUG_SCREENSHOTS_OPT="$(jq -r '.debug_screenshots // false' "$CONFIG_PATH")"
 VNC_PASSWORD_OPT="$(jq -r '.vnc_password // empty' "$CONFIG_PATH")"
 VNC_RESOLUTION_OPT="$(jq -r '.vnc_resolution // empty' "$CONFIG_PATH")"
 
@@ -46,10 +49,20 @@ else
     export TRY_AUTOLOGIN="false"
 fi
 
-# Number of Tab presses to reach "Use Password Instead" on the code screen.
-# Tunable without a rebuild via the password_link_tabs option.
+# Tab-navigation counts for the login flow, tunable without a rebuild.
+if [ -n "$CONTINUE_TABS_OPT" ]; then
+    export CONTINUE_TABS="$CONTINUE_TABS_OPT"
+fi
 if [ -n "$PASSWORD_LINK_TABS_OPT" ]; then
     export PASSWORD_LINK_TABS="$PASSWORD_LINK_TABS_OPT"
+fi
+if [ -n "$SIGNIN_TABS_OPT" ]; then
+    export SIGNIN_TABS="$SIGNIN_TABS_OPT"
+fi
+
+# Save a screenshot of each login step to /data when enabled, for debugging.
+if [ "$DEBUG_SCREENSHOTS_OPT" = "true" ]; then
+    export DEBUG_SCREENSHOTS="true"
 fi
 
 if [ -n "$VNC_PASSWORD_OPT" ]; then

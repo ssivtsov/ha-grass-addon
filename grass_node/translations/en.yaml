@@ -14,6 +14,11 @@ configuration:
       Grass's email -> "Use Password Instead" -> password flow. If it
       misfires, log in manually through the noVNC web UI; either way the
       session is saved to /data and persists.
+  continue_tabs:
+    name: Continue tab count
+    description: >-
+      Advanced. Tab presses from the email field to the CONTINUE button
+      during auto-login. Default 1.
   password_link_tabs:
     name: Password link tab count
     description: >-
@@ -21,6 +26,17 @@ configuration:
       "Use Password Instead" link on the code screen. If auto-login lands on
       the wrong element, adjust this (watch the noVNC window) and restart.
       Default 7.
+  signin_tabs:
+    name: Sign-in tab count
+    description: >-
+      Advanced. Tab presses from the password field to the SIGN IN button
+      during auto-login. Default 1.
+  debug_screenshots:
+    name: Debug screenshots
+    description: >-
+      Save a screenshot of each auto-login step to /data (grass-step*.png)
+      so you can see exactly what the app showed when credentials were typed.
+      Turn off once debugging is done.
   vnc_password:
     name: VNC password
     description: Password to access the noVNC / VNC interface. Default: money4band.
