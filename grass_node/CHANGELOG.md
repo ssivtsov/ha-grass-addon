@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.1.5
+
+- **Auto-login now clicks fields/buttons instead of Tab navigation.** The
+  debug screenshots showed the email field was never focused (so `Ctrl+A`
+  selected the whole page and the email was not entered), and the blind
+  `Tab → Return` closed the login window by hitting its ✕ button. The script
+  now moves the mouse and clicks the email field, CONTINUE, "Use Password
+  Instead", the password field and SIGN IN at known positions.
+- **New tunable click positions** (`email_xy`, `continue_xy`,
+  `use_password_xy`, `password_xy`, `signin_xy`) as `"x,y"` offsets from the
+  Grass window, so they can be corrected from the debug screenshots without a
+  rebuild. Replaces the previous `*_tabs` options (kept as ignored no-ops).
+
 ## 2.1.4
 
 - **Debug screenshots now go to `/share/grass-debug/`** instead of the

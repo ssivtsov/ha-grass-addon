@@ -48,10 +48,56 @@ PROCESS_TERMINATE_TIMEOUT = 5
 XDOTOOL_CMD = ["xdotool"]
 XDOTOOL_TYPE_DELAY_MS = "125"
 
-# Tab navigation counts (all tunable via env / add-on options).
-DEFAULT_CONTINUE_TABS = 1       # email field -> CONTINUE button
-DEFAULT_PASSWORD_LINK_TABS = 7  # code screen -> "Use Password Instead"
-DEFAULT_SIGNIN_TABS = 1         # password field -> SIGN IN button
+# Click targets, as "x,y" offsets from the Grass window's top-left corner, for
+# the default 1280x720 layout. All tunable via env / add-on options so they can
+# be corrected from the debug screenshots without a rebuild.
+DEFAULT_EMAIL_XY = "175,225"      # email input on the Sign In screen
+DEFAULT_CONTINUE_XY = "175,296"   # CONTINUE button
+DEFAULT_USEPASS_XY = "175,440"    # "Use Password Instead" link on the code screen
+DEFAULT_PASSWORD_XY = "175,225"   # password input after switching to password login
+DEFAULT_SIGNIN_XY = "175,296"     # SIGN IN button
+
+
+def _parse_xy(env_name: str, default: str) -> Tuple[int, int]:
+    raw = os.getenv(env_name, default) or default
+    try:
+        x_str, y_str = raw.split(",")
+        return int(x_str.strip()), int(y_str.strip())
+    except (ValueError, AttributeError):
+        x_str, y_str = default.split(",")
+        return int(x_str), int(y_str)
+
+
+def _window_origin(window_id: str) -> Tuple[int, int]:
+    """Return the (X, Y) screen coordinates of a window's top-left corner."""
+    try:
+        out = subprocess.check_output(
+            XDOTOOL_CMD + ["getwindowgeometry", "--shell", window_id],
+            universal_newlines=True,
+        )
+        geo = {}
+        for line in out.splitlines():
+            if "=" in line:
+                key, val = line.split("=", 1)
+                geo[key.strip()] = val.strip()
+        return int(geo.get("X", "0")), int(geo.get("Y", "0"))
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
+        return 0, 0
+
+
+def click_window_rel(window_id: str, rel_x: int, rel_y: int, retry_multiplier: int) -> bool:
+    """Move the mouse to a window-relative offset and left-click there."""
+    origin_x, origin_y = _window_origin(window_id)
+    x, y = origin_x + rel_x, origin_y + rel_y
+    logging.info(f"Clicking window-relative ({rel_x},{rel_y}) -> screen ({x},{y})")
+    try:
+        result = _run_subprocess(
+            XDOTOOL_CMD + ["mousemove", "--sync", str(x), str(y), "click", "1"]
+        )
+        time.sleep(retry_multiplier * 0.2)
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return False
 
 
 def _screenshots_enabled() -> bool:
@@ -219,64 +265,64 @@ def _get_credentials() -> Tuple[Optional[str], Optional[str]]:
 
 
 def _clear_field(retry_multiplier: int) -> None:
-    """Select-all and delete, so a focused input starts empty before typing."""
+    """Select-all and delete inside the currently focused input, then start fresh."""
     press_key("ctrl+a", retry_multiplier)
     press_key("Delete", retry_multiplier)
 
 
-def _tab_to_and_activate(tabs: int, retry_multiplier: int) -> bool:
-    """Press Tab `tabs` times to move focus onto a button/link, then activate it."""
-    for _ in range(tabs):
-        if not press_key("Tab", retry_multiplier):
-            return False
-    return press_key("Return", retry_multiplier)
-
-
-def _perform_login_steps(email_username: str, password: str, retry_multiplier: int) -> bool:
+def _perform_login_steps(window_id: str, email_username: str, password: str, retry_multiplier: int) -> bool:
     """
-    Drive Grass's current email-first login flow with keyboard automation.
+    Drive Grass's current email-first login flow by CLICKING the fields and
+    buttons at known screen positions, instead of relying on autofocus and Tab
+    navigation (which left the email field unfocused — so Ctrl+A selected the
+    whole page — and let Tab+Enter hit the window's close button).
 
-    IMPORTANT: this form does NOT submit on Enter — the CONTINUE / SIGN IN
-    buttons must be focused (via Tab) and activated. Pressing Return while the
-    email field is focused does nothing, which previously left the flow stuck
-    on the email screen.
+      click email -> clear -> type email
+      -> click CONTINUE
+      -> click "Use Password Instead"
+      -> click password -> clear -> type password
+      -> click SIGN IN
 
-      email field (autofocused) -> type email -> Tab to CONTINUE -> Return
-      -> Tab N times to "Use Password Instead" -> Return
-      -> type password -> Tab to SIGN IN -> Return
+    All click targets are window-relative "x,y" offsets, tunable via env.
     """
-    continue_tabs = int(os.getenv("CONTINUE_TABS", str(DEFAULT_CONTINUE_TABS)))
-    password_link_tabs = int(os.getenv("PASSWORD_LINK_TABS", str(DEFAULT_PASSWORD_LINK_TABS)))
-    signin_tabs = int(os.getenv("SIGNIN_TABS", str(DEFAULT_SIGNIN_TABS)))
+    email_xy = _parse_xy("EMAIL_XY", DEFAULT_EMAIL_XY)
+    continue_xy = _parse_xy("CONTINUE_XY", DEFAULT_CONTINUE_XY)
+    usepass_xy = _parse_xy("USEPASS_XY", DEFAULT_USEPASS_XY)
+    password_xy = _parse_xy("PASSWORD_XY", DEFAULT_PASSWORD_XY)
+    signin_xy = _parse_xy("SIGNIN_XY", DEFAULT_SIGNIN_XY)
 
-    logging.info("Login step 1/4: clearing and typing email into the email field...")
+    logging.info("Login step 1/5: clicking email field, clearing, typing email...")
+    if not click_window_rel(window_id, *email_xy, retry_multiplier):
+        return False
     _clear_field(retry_multiplier)
     if not type_text(email_username, retry_multiplier):
         return False
     time.sleep(retry_multiplier * POST_CREDENTIAL_ENTRY_WAIT_FACTOR)
     capture("step1-email-typed")
 
-    logging.info(f"Login step 2/4: Tab x{continue_tabs} to CONTINUE, then Return...")
-    if not _tab_to_and_activate(continue_tabs, retry_multiplier):
+    logging.info("Login step 2/5: clicking CONTINUE...")
+    if not click_window_rel(window_id, *continue_xy, retry_multiplier):
         return False
     time.sleep(retry_multiplier * POST_LOGIN_STEP_WAIT_FACTOR)
     capture("step2-after-continue")
 
-    logging.info(
-        f"Login step 3/4: Tab x{password_link_tabs} to 'Use Password Instead', then Return..."
-    )
-    if not _tab_to_and_activate(password_link_tabs, retry_multiplier):
+    logging.info("Login step 3/5: clicking 'Use Password Instead'...")
+    if not click_window_rel(window_id, *usepass_xy, retry_multiplier):
         return False
     time.sleep(retry_multiplier * POST_LOGIN_STEP_WAIT_FACTOR)
     capture("step3-after-use-password")
 
-    logging.info(f"Login step 4/4: typing password, Tab x{signin_tabs} to SIGN IN, then Return...")
+    logging.info("Login step 4/5: clicking password field, clearing, typing password...")
+    if not click_window_rel(window_id, *password_xy, retry_multiplier):
+        return False
     _clear_field(retry_multiplier)
     if not type_text(password, retry_multiplier):
         return False
     time.sleep(retry_multiplier * POST_CREDENTIAL_ENTRY_WAIT_FACTOR)
     capture("step4-password-typed")
-    if not _tab_to_and_activate(signin_tabs, retry_multiplier):
+
+    logging.info("Login step 5/5: clicking SIGN IN...")
+    if not click_window_rel(window_id, *signin_xy, retry_multiplier):
         return False
     time.sleep(retry_multiplier * POST_LOGIN_ATTEMPT_WAIT_FACTOR)
     capture("step5-after-signin")
@@ -343,8 +389,8 @@ def configure_grass(
 
         time.sleep(retry_multiplier * POST_FOCUS_WAIT_FACTOR)
 
-        logging.info("Performing login steps (email-first flow)...")
-        if not _perform_login_steps(email_username, password, retry_multiplier):
+        logging.info("Performing login steps (email-first flow, click-based)...")
+        if not _perform_login_steps(last_window_id, email_username, password, retry_multiplier):
             logging.warning("A login step failed. Retrying configuration attempt.")
             continue
 
