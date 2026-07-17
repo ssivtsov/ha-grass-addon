@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.2.0
+
+- **Remove CDP / DOM automation code.** The Chrome DevTools Protocol approach
+  never worked because `/usr/bin/grass` does not forward `--remote-debugging-port`
+  to the Electron binary.  All CDP helpers, the `python3-websocket` dependency,
+  and the `--remote-debugging-port` launch flag have been removed.  The login
+  flow is now the clean coordinate-based implementation from v2.1.5 with the
+  corrected defaults from v2.1.6–2.1.8 (`use_password_xy: 175,475`;
+  `signin_xy: 175,340`).
+- **Remove `full_access: true`.** The HA security warning disappears.  The Grass
+  desktop app and VNC server run without the privileged flag; if anything breaks
+  you can re-add it in your own add-on configuration.
+
 ## 2.1.9
 
 - **Eliminate 45-second delay when CDP is unavailable.** The `/usr/bin/grass`
