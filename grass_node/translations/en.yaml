@@ -14,29 +14,6 @@ configuration:
       Grass's email -> "Use Password Instead" -> password flow. If it
       misfires, log in manually through the noVNC web UI; either way the
       session is saved to /data and persists.
-  email_xy:
-    name: Email field position
-    description: >-
-      Advanced. "x,y" click position (offset from the Grass window's top-left)
-      of the email field during auto-login. Adjust using the debug screenshots
-      if the click misses. Default "175,225".
-  continue_xy:
-    name: Continue button position
-    description: >-
-      Advanced. "x,y" click position of the CONTINUE button. Default "175,296".
-  use_password_xy:
-    name: "'Use Password Instead' position"
-    description: >-
-      Advanced. "x,y" click position of the "Use Password Instead" link on the
-      code screen. Default "175,440".
-  password_xy:
-    name: Password field position
-    description: >-
-      Advanced. "x,y" click position of the password field. Default "175,225".
-  signin_xy:
-    name: Sign-in button position
-    description: >-
-      Advanced. "x,y" click position of the SIGN IN button. Default "175,296".
   debug_screenshots:
     name: Debug screenshots
     description: >-
