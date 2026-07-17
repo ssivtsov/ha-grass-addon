@@ -53,14 +53,20 @@ the add-on drives Grass's login for you: it types your email, presses
 **Sign In**. A successful login is saved to `/data`, so it only happens once —
 subsequent starts skip straight past the login.
 
-### Tuning the tab counts
+### Tuning the click positions
 
-Auto-login navigates with a fixed number of Tab presses:
-`continue_tabs` (email → CONTINUE, default 1), `password_link_tabs`
-(code screen → "Use Password Instead", default 7), and `signin_tabs`
-(password → SIGN IN, default 1). If Grass changes its page and a step lands
-on the wrong element, adjust the relevant count by one or two and restart the
-add-on. No rebuild needed.
+Auto-login clicks the fields and buttons at fixed screen positions (offsets
+from the Grass window's top-left corner, for the default 1280x720 screen):
+
+- `email_xy` — email field (default `175,225`)
+- `continue_xy` — CONTINUE button (default `175,296`)
+- `use_password_xy` — "Use Password Instead" link (default `175,440`)
+- `password_xy` — password field (default `175,225`)
+- `signin_xy` — SIGN IN button (default `175,296`)
+
+If a click misses, turn on `debug_screenshots`, look at where each step landed
+in `/share/grass-debug/`, and correct the relevant `x,y` value. No rebuild
+needed — just restart the add-on.
 
 ### Seeing what auto-login did (debug screenshots)
 
