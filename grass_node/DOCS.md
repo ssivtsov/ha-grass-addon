@@ -31,6 +31,7 @@ logged in, the session persists.
 | `user_email` | no | Grass account email, used for auto-login. Leave blank to log in entirely by hand. |
 | `user_password` | no | Grass account password, used for auto-login. |
 | `try_autologin` | no | Attempt automatic login with the email/password above. Default: `true`. |
+| `password_link_tabs` | no | Advanced: Tab presses used during auto-login to reach "Use Password Instead". Default: `7`. |
 | `vnc_password` | no | Password for the noVNC / VNC interface. Default: `money4band`. |
 | `vnc_resolution` | no | Virtual screen resolution, e.g. `1280x720`. |
 
@@ -44,29 +45,33 @@ vnc_password: change-me
 vnc_resolution: 1280x720
 ```
 
-## Logging in (manual — one time)
+## Auto-login
 
-Auto-login is disabled by default because Grass's login flow (email → code /
-"Use Password Instead" → password) can't be driven reliably by the upstream
-keystroke automation. Logging in by hand once is the reliable path, and the
-session is now saved to `/data`, so you only do this once — it survives
-add-on restarts and updates.
+With `user_email`, `user_password` and `try_autologin: true` (the default),
+the add-on drives Grass's login for you: it types your email, presses
+**Continue**, clicks **Use Password Instead**, types your password and presses
+**Sign In**. A successful login is saved to `/data`, so it only happens once —
+subsequent starts skip straight past the login.
 
-1. Start the add-on and open the **Web UI** (port `6080`) from the add-on
-   page, or navigate to `http://<home-assistant-host>:6080/vnc.html`.
+### Tuning `password_link_tabs`
+
+Reaching the **Use Password Instead** link on the code screen is done by
+pressing Tab a fixed number of times (default `7`). Grass may change how many
+focusable elements precede that link. If auto-login types your password into
+the wrong place, open the noVNC web UI, watch where the focus lands after the
+email step, and adjust `password_link_tabs` up or down by one or two, then
+restart the add-on. No rebuild needed.
+
+## Manual login (fallback)
+
+If auto-login misfires, log in by hand — you only need to do it once (the
+session persists):
+
+1. Open the **Web UI** (port `6080`), or `http://<home-assistant-host>:6080/vnc.html`.
 2. Enter the VNC password (`vnc_password`) to see the Grass desktop app.
-3. In the app's **Sign In** panel:
-   - Type your **email**, click **CONTINUE**.
-   - Grass emails you a 6-digit code — either enter it, or click
-     **Use Password Instead** and type your password.
-   - Click **SIGN IN**.
-4. That's it. The login is saved; you won't need to repeat it.
-
-### Auto-login (optional, unreliable)
-
-If you want the add-on to *attempt* auto-login on start, set
-`try_autologin: true`. Note it frequently fails against Grass's current login
-page — if it does, just finish the login manually as above.
+3. In the **Sign In** panel: type your **email** → **CONTINUE** → enter the
+   emailed 6-digit code, or click **Use Password Instead** and type your
+   password → **SIGN IN**.
 
 ## Verifying it works
 

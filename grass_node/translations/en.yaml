@@ -10,10 +10,17 @@ configuration:
   try_autologin:
     name: Try auto-login
     description: >-
-      Off by default. When on, the add-on attempts an automatic login with
-      the email/password above. Grass's current login page makes this
-      unreliable, so the recommended path is to log in manually once through
-      the noVNC web UI — the session is saved to /data and persists.
+      Attempt an automatic login with the email/password above, following
+      Grass's email -> "Use Password Instead" -> password flow. If it
+      misfires, log in manually through the noVNC web UI; either way the
+      session is saved to /data and persists.
+  password_link_tabs:
+    name: Password link tab count
+    description: >-
+      Advanced. Number of Tab presses used during auto-login to reach the
+      "Use Password Instead" link on the code screen. If auto-login lands on
+      the wrong element, adjust this (watch the noVNC window) and restart.
+      Default 7.
   vnc_password:
     name: VNC password
     description: Password to access the noVNC / VNC interface. Default: money4band.
