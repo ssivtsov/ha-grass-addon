@@ -1,6 +1,6 @@
 name: "Grass Node"
 description: "Run a Grass (getgrass.io) node to share unused bandwidth and earn points"
-version: "2.2.0"
+version: "2.2.1"
 slug: "grass_node"
 url: "https://github.com/ssivtsov/ha-grass-addon"
 init: false
@@ -20,11 +20,6 @@ options:
   user_password: ""
   try_autologin: true
   debug_screenshots: false
-  email_xy: "175,225"
-  continue_xy: "175,296"
-  use_password_xy: "175,475"
-  password_xy: "175,225"
-  signin_xy: "175,340"
   vnc_password: "money4band"
   vnc_resolution: "1280x720"
 schema:
@@ -32,11 +27,6 @@ schema:
   user_password: password?
   try_autologin: bool?
   debug_screenshots: bool?
-  email_xy: str?
-  continue_xy: str?
-  use_password_xy: str?
-  password_xy: str?
-  signin_xy: str?
   vnc_password: password?
   vnc_resolution: str?
   # Deprecated options from earlier versions kept so existing configs

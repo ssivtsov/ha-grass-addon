@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.1
+
+- **Remove coordinate options from HA settings.** `email_xy`, `continue_xy`,
+  `use_password_xy`, `password_xy` and `signin_xy` no longer appear in the
+  add-on configuration UI. The correct defaults are baked into the script and
+  work for the standard 1280x720 layout.
+
 ## 2.2.0
 
 - **Remove CDP / DOM automation code.** The Chrome DevTools Protocol approach
