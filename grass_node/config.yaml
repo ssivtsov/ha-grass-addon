@@ -1,6 +1,6 @@
 name: "Grass Node"
 description: "Run a Grass (getgrass.io) node to share unused bandwidth and earn points"
-version: "2.1.6"
+version: "2.1.7"
 slug: "grass_node"
 url: "https://github.com/ssivtsov/ha-grass-addon"
 init: false

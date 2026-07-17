@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.1.7
+
+- **DOM-based button clicks via Chrome DevTools Protocol (CDP).** The Grass
+  desktop app is an Electron/Chromium application; launching it with
+  `--remote-debugging-port` exposes a CDP endpoint. The autologin script now
+  connects to that endpoint and clicks CONTINUE, "Use Password Instead" and
+  SIGN IN by finding the elements in the DOM by their visible text, rather
+  than relying on fixed screen coordinates. This makes those steps immune to
+  window position and resolution changes.  Coordinate-based clicks are kept
+  as a fallback in case the CDP endpoint is unavailable.
+- Install `python3-websocket` (Debian package for `websocket-client`) in the
+  Dockerfile so the CDP WebSocket connection is available without pip.
+- `use_password_xy` default corrected to `"175,475"` (was `"175,440"`) for
+  the coordinate fallback path.
+
 ## 2.1.6
 
 - **Fix "Use Password Instead" click position.** Screenshots confirmed the link
