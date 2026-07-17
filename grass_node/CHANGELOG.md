@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.1.2
+
+- **Fix auto-login.** Ships a corrected entrypoint script that replaces the
+  upstream one:
+  - Credentials are now always typed with `xdotool type` (with `--`), so an
+    email like `user@gmail.com` is entered into the field instead of being
+    rejected as an `Invalid key sequence` by `xdotool key`.
+  - The login choreography follows Grass's current flow: type email →
+    Return (Continue) → Tab to "Use Password Instead" → Return → type
+    password → Return (Sign In).
+- **New `password_link_tabs` option** (default 7): how many Tab presses reach
+  the "Use Password Instead" link. Tune it (watching noVNC) if auto-login
+  lands on the wrong element — no rebuild needed.
+- **Auto-login on by default again** now that it types credentials correctly.
+  If it still misfires against a Grass UI change, manual login via noVNC
+  works and the profile persistence added in 2.1.1 means either path is a
+  one-time action.
+
 ## 2.1.1
 
 - **Persist the login across restarts.** The Grass desktop app's profile

@@ -5,7 +5,8 @@ CONFIG_PATH=/data/options.json
 
 USER_EMAIL="$(jq -r '.user_email // empty' "$CONFIG_PATH")"
 USER_PASSWORD="$(jq -r '.user_password // empty' "$CONFIG_PATH")"
-TRY_AUTOLOGIN_OPT="$(jq -r '.try_autologin // false' "$CONFIG_PATH")"
+TRY_AUTOLOGIN_OPT="$(jq -r '.try_autologin // true' "$CONFIG_PATH")"
+PASSWORD_LINK_TABS_OPT="$(jq -r '.password_link_tabs // empty' "$CONFIG_PATH")"
 VNC_PASSWORD_OPT="$(jq -r '.vnc_password // empty' "$CONFIG_PATH")"
 VNC_RESOLUTION_OPT="$(jq -r '.vnc_resolution // empty' "$CONFIG_PATH")"
 
@@ -14,7 +15,7 @@ VNC_RESOLUTION_OPT="$(jq -r '.vnc_resolution // empty' "$CONFIG_PATH")"
 # HA add-on containers are recreated on every restart/update, so anything
 # under /root is lost. /data is the only persistent location, so we move the
 # app's config there (seeding from the image on first run) and symlink it back.
-# This makes a manual login a one-time action instead of every restart.
+# This makes a successful login (auto or manual) a one-time action.
 # ---------------------------------------------------------------------------
 PROFILE_DIR=/data/app-config
 if [ ! -L /root/.config ]; then
@@ -35,15 +36,20 @@ fi
 export USER_EMAIL
 export USER_PASSWORD
 
-# Auto-login is OFF by default: the upstream keystroke automation cannot type
-# an email address (the '@'/'.' characters break its xdotool logic) and does
-# not follow Grass's current email -> "Use Password Instead" -> password flow.
-# Manual login through noVNC is the reliable path and, thanks to the profile
-# persistence above, only needs to be done once.
+# Auto-login uses our corrected entrypoint script (fixes email typing and
+# follows Grass's email -> "Use Password Instead" -> password flow). If it
+# misfires you can still log in manually via noVNC; the persisted profile
+# means either way you only do it once.
 if [ "$TRY_AUTOLOGIN_OPT" = "true" ]; then
     export TRY_AUTOLOGIN="true"
 else
     export TRY_AUTOLOGIN="false"
+fi
+
+# Number of Tab presses to reach "Use Password Instead" on the code screen.
+# Tunable without a rebuild via the password_link_tabs option.
+if [ -n "$PASSWORD_LINK_TABS_OPT" ]; then
+    export PASSWORD_LINK_TABS="$PASSWORD_LINK_TABS_OPT"
 fi
 
 if [ -n "$VNC_PASSWORD_OPT" ]; then
@@ -53,9 +59,9 @@ if [ -n "$VNC_RESOLUTION_OPT" ]; then
     export VNC_RESOLUTION="$VNC_RESOLUTION_OPT"
 fi
 
-echo "[grass-node] Starting Grass desktop (email: ${USER_EMAIL:-<not set>}, autologin: ${TRY_AUTOLOGIN})"
-echo "[grass-node] Open the Web UI (port 6080) to log in: enter email -> Continue -> 'Use Password Instead' -> password."
+echo "[grass-node] Starting Grass desktop (email: ${USER_EMAIL:-<not set>}, autologin: ${TRY_AUTOLOGIN}, password_link_tabs: ${PASSWORD_LINK_TABS:-7})"
+echo "[grass-node] Web UI on port 6080. Manual login: email -> Continue -> 'Use Password Instead' -> password."
 
 # Hand off to the upstream image's entrypoint chain, which starts the VNC
-# server, noVNC and the Grass desktop application.
+# server, noVNC and the Grass desktop application (our corrected autologin).
 exec /usr/local/bin/customizable_entrypoint.sh
