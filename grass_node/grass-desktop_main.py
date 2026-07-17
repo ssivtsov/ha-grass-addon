@@ -33,6 +33,7 @@ GRASS_WINDOW_NAME = "Grass"
 CONFIGURED_FLAG_FILE = "~/.grass-configured"
 
 CDP_PORT = 9222
+_cdp_available: bool = False  # set to True only after _cdp_wait_ready() succeeds
 
 DEFAULT_MAX_RETRY_MULTIPLIER = 3
 DEFAULT_TRY_AUTOLOGIN = "true"
@@ -79,14 +80,25 @@ def _cdp_list_targets() -> list:
 
 
 def _cdp_wait_ready(timeout_s: int = 30) -> bool:
-    """Poll until the CDP /json/list endpoint returns at least one target."""
+    """
+    Poll until the CDP /json/list endpoint returns at least one target.
+    Sets the module-level _cdp_available flag so that cdp_click_by_text()
+    can skip immediately instead of timing out per button when CDP is absent.
+    """
+    global _cdp_available
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         if _cdp_list_targets():
             logging.info("CDP endpoint is ready.")
+            _cdp_available = True
             return True
         time.sleep(1)
-    logging.warning("CDP endpoint did not become ready within %ds.", timeout_s)
+    logging.warning(
+        "CDP endpoint did not become ready within %ds. "
+        "Button clicks will use coordinate fallback directly.",
+        timeout_s,
+    )
+    _cdp_available = False
     return False
 
 
@@ -127,7 +139,10 @@ def cdp_click_by_text(text: str, timeout_s: int = 15) -> bool:
     (case-insensitive) across all CDP page / webview targets, and click it
     via JavaScript.  Also searches same-origin iframes inside each target.
     Returns True if the element was found and clicked, False otherwise.
+    Returns immediately if CDP was confirmed unavailable by _cdp_wait_ready().
     """
+    if not _cdp_available:
+        return False
     text_safe = text.replace("\\", "\\\\").replace("'", "\\'")
     js = f"""
 (function() {{

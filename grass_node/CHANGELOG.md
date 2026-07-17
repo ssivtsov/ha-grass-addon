@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.9
+
+- **Eliminate 45-second delay when CDP is unavailable.** The `/usr/bin/grass`
+  wrapper does not forward `--remote-debugging-port` to the Electron binary, so
+  the Chrome DevTools Protocol endpoint never opens. Previously each of the three
+  button clicks (CONTINUE, Use Password Instead, SIGN IN) would wait 15 s for a
+  DOM element before falling back to the coordinate click, adding ~45 s to every
+  login. Now: after the initial 30 s CDP readiness check fails, all subsequent
+  CDP calls return immediately and the coordinate fallback is used without delay.
+
 ## 2.1.8
 
 - **Fix SIGN IN coordinate on the password screen.** The password screen has a
