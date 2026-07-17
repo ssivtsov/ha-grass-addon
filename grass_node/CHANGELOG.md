@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.6
+
+- **Fix "Use Password Instead" click position.** Screenshots confirmed the link
+  is at window-relative y≈475, not y=440 as set in 2.1.5. Default
+  `use_password_xy` updated from `"175,440"` to `"175,475"`. Users who already
+  set a custom value are unaffected.
+
 ## 2.1.5
 
 - **Auto-login now clicks fields/buttons instead of Tab navigation.** The
