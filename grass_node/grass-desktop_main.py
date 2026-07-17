@@ -2,21 +2,23 @@
 """
 Corrected Grass Desktop autologin entrypoint (ha-grass-addon).
 
-Based on MRColorR/get-grass grass-desktop_main.py, with two fixes:
+Based on MRColorR/get-grass grass-desktop_main.py, with the following fixes:
 
-1. Credentials are now always typed with `xdotool type` (never `xdotool key`).
-   The upstream heuristic used `xdotool key` for any string that was not
-   purely alphanumeric, so an email like "user@gmail.com" was fed to
-   `xdotool key` and rejected with "Invalid key sequence".
+1. Credentials are typed with `xdotool type` (never `xdotool key`), so an
+   email like "user@gmail.com" is entered correctly instead of being rejected
+   with "Invalid key sequence".
 
 2. The login choreography follows Grass's current email-first flow:
-   type email -> Continue (Return) -> "Use Password Instead" -> password
-   -> Sign In, instead of the old single-screen email+Tab+password flow.
+   type email -> CONTINUE -> "Use Password Instead" -> password -> SIGN IN.
 
-The number of Tab presses needed to reach the "Use Password Instead" link on
-the code screen can vary; it is configurable via PASSWORD_LINK_TABS (default 7)
-so it can be tuned without editing this file.
+3. Buttons and links (CONTINUE, "Use Password Instead", SIGN IN) are clicked
+   via Chrome DevTools Protocol (CDP) — Grass is an Electron/Chromium app and
+   exposes a debugging port — so clicks target the actual DOM element rather
+   than a fixed screen coordinate.  Coordinate-based clicks are kept as a
+   fallback in case CDP is not available.
 """
+import json
+import http.client
 import os
 import sys
 import time
@@ -29,6 +31,8 @@ from typing import List, Optional, Tuple, Any
 GRASS_EXECUTABLE_PATH = "/usr/bin/grass"
 GRASS_WINDOW_NAME = "Grass"
 CONFIGURED_FLAG_FILE = "~/.grass-configured"
+
+CDP_PORT = 9222
 
 DEFAULT_MAX_RETRY_MULTIPLIER = 3
 DEFAULT_TRY_AUTOLOGIN = "true"
@@ -48,15 +52,127 @@ PROCESS_TERMINATE_TIMEOUT = 5
 XDOTOOL_CMD = ["xdotool"]
 XDOTOOL_TYPE_DELAY_MS = "125"
 
-# Click targets, as "x,y" offsets from the Grass window's top-left corner, for
-# the default 1280x720 layout. All tunable via env / add-on options so they can
-# be corrected from the debug screenshots without a rebuild.
-DEFAULT_EMAIL_XY = "175,225"      # email input on the Sign In screen
-DEFAULT_CONTINUE_XY = "175,296"   # CONTINUE button
-DEFAULT_USEPASS_XY = "175,440"    # "Use Password Instead" link on the code screen
-DEFAULT_PASSWORD_XY = "175,225"   # password input after switching to password login
-DEFAULT_SIGNIN_XY = "175,296"     # SIGN IN button
+# Coordinate-based fallback click targets — window-relative "x,y" offsets for
+# the default 1280x720 layout. Used only when the CDP / DOM click fails.
+DEFAULT_EMAIL_XY = "175,225"
+DEFAULT_CONTINUE_XY = "175,296"
+DEFAULT_USEPASS_XY = "175,475"
+DEFAULT_PASSWORD_XY = "175,225"
+DEFAULT_SIGNIN_XY = "175,296"
 
+
+# ---------------------------------------------------------------------------
+# Chrome DevTools Protocol helpers
+# ---------------------------------------------------------------------------
+
+def _cdp_list_targets() -> list:
+    """Return the list of CDP targets from the Grass debugging endpoint."""
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", CDP_PORT, timeout=3)
+        conn.request("GET", "/json/list")
+        resp = conn.getresponse()
+        data = json.loads(resp.read())
+        conn.close()
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def _cdp_wait_ready(timeout_s: int = 30) -> bool:
+    """Poll until the CDP /json/list endpoint returns at least one target."""
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        if _cdp_list_targets():
+            logging.info("CDP endpoint is ready.")
+            return True
+        time.sleep(1)
+    logging.warning("CDP endpoint did not become ready within %ds.", timeout_s)
+    return False
+
+
+def _cdp_eval_on(ws_url: str, js: str) -> Optional[str]:
+    """
+    Evaluate a JS expression in a specific CDP target (by WebSocket URL).
+    Returns the string result, or None on error or if the result is not a string.
+    """
+    try:
+        import websocket as _ws  # python3-websocket (websocket-client)
+    except ImportError:
+        logging.warning("python3-websocket not installed; CDP unavailable.")
+        return None
+
+    try:
+        ws = _ws.create_connection(ws_url, timeout=8)
+        ws.send(json.dumps({
+            "id": 1,
+            "method": "Runtime.evaluate",
+            "params": {"expression": js, "returnByValue": True},
+        }))
+        for _ in range(30):
+            raw = ws.recv()
+            msg = json.loads(raw)
+            if msg.get("id") == 1:
+                ws.close()
+                val = msg.get("result", {}).get("result", {}).get("value")
+                return str(val) if val is not None else None
+        ws.close()
+    except Exception as e:
+        logging.debug("CDP eval error on %s: %s", ws_url, e)
+    return None
+
+
+def cdp_click_by_text(text: str, timeout_s: int = 15) -> bool:
+    """
+    Find the first visible element whose text content includes `text`
+    (case-insensitive) across all CDP page / webview targets, and click it
+    via JavaScript.  Also searches same-origin iframes inside each target.
+    Returns True if the element was found and clicked, False otherwise.
+    """
+    text_safe = text.replace("\\", "\\\\").replace("'", "\\'")
+    js = f"""
+(function() {{
+  var needle = '{text_safe}'.toLowerCase();
+  function tryClick(root) {{
+    var els = Array.from(root.querySelectorAll(
+      'a, button, span, p, div[role="button"], [tabindex]'
+    ));
+    var el = els.find(function(e) {{
+      return e.offsetParent !== null &&
+             e.textContent.trim().toLowerCase().indexOf(needle) !== -1;
+    }});
+    if (el) {{ el.click(); return 'ok'; }}
+    var frames = root.querySelectorAll('iframe');
+    for (var i = 0; i < frames.length; i++) {{
+      try {{
+        var r = tryClick(frames[i].contentDocument);
+        if (r === 'ok') return 'ok';
+      }} catch(e) {{}}
+    }}
+    return 'not_found';
+  }}
+  return tryClick(document);
+}})()
+"""
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        for target in _cdp_list_targets():
+            if target.get("type") not in ("page", "webview"):
+                continue
+            ws_url = target.get("webSocketDebuggerUrl", "")
+            if not ws_url:
+                continue
+            result = _cdp_eval_on(ws_url, js)
+            if result == "ok":
+                logging.info("CDP: clicked element containing '%s'.", text)
+                return True
+        time.sleep(1)
+    logging.warning("CDP: element containing '%s' not found after %ds.", text, timeout_s)
+    return False
+
+
+# ---------------------------------------------------------------------------
+# xdotool / window helpers
+# ---------------------------------------------------------------------------
 
 def _parse_xy(env_name: str, default: str) -> Tuple[int, int]:
     raw = os.getenv(env_name, default) or default
@@ -89,7 +205,7 @@ def click_window_rel(window_id: str, rel_x: int, rel_y: int, retry_multiplier: i
     """Move the mouse to a window-relative offset and left-click there."""
     origin_x, origin_y = _window_origin(window_id)
     x, y = origin_x + rel_x, origin_y + rel_y
-    logging.info(f"Clicking window-relative ({rel_x},{rel_y}) -> screen ({x},{y})")
+    logging.info("Coordinate click: window-relative (%d,%d) -> screen (%d,%d)", rel_x, rel_y, x, y)
     try:
         result = _run_subprocess(
             XDOTOOL_CMD + ["mousemove", "--sync", str(x), str(y), "click", "1"]
@@ -105,10 +221,6 @@ def _screenshots_enabled() -> bool:
 
 
 def _screenshot_dir() -> str:
-    """
-    Prefer /share/grass-debug (browsable via the File editor / Samba add-ons);
-    fall back to /data if /share is not mapped.
-    """
     base = "/share/grass-debug" if os.path.isdir("/share") else "/data"
     try:
         os.makedirs(base, exist_ok=True)
@@ -124,11 +236,11 @@ def capture(step: str) -> None:
     path = os.path.join(_screenshot_dir(), f"grass-{step}.png")
     try:
         subprocess.run(["scrot", "-o", path], check=False)
-        logging.info(f"Saved screenshot: {path}")
+        logging.info("Saved screenshot: %s", path)
     except FileNotFoundError:
         logging.warning("scrot not installed; cannot save screenshot.")
-    except Exception as e:  # noqa: BLE001
-        logging.warning(f"Screenshot failed: {e}")
+    except Exception as e:
+        logging.warning("Screenshot failed: %s", e)
 
 
 def setup_logging() -> None:
@@ -141,17 +253,16 @@ def _run_subprocess(cmd: List[str], check: bool = False, **kwargs: Any) -> subpr
     try:
         return subprocess.run(cmd, check=check, universal_newlines=True, **kwargs)
     except subprocess.CalledProcessError as e:
-        logging.error(f"Command '{' '.join(cmd)}' failed with error: {e}")
+        logging.error("Command '%s' failed: %s", " ".join(cmd), e)
         raise
     except FileNotFoundError:
-        logging.error(f"Command '{cmd[0]}' not found. Ensure it is installed and in PATH.")
+        logging.error("Command '%s' not found.", cmd[0])
         raise
 
 
 def press_key(key_sequence: str, retry_multiplier: int) -> bool:
-    """Press a single key or key combo (e.g. 'Tab', 'Return', 'Escape')."""
     cmd = XDOTOOL_CMD + ["key", key_sequence]
-    logging.info(f"Pressing key: '{key_sequence}'")
+    logging.info("Pressing key: '%s'", key_sequence)
     try:
         result = _run_subprocess(cmd)
         time.sleep(retry_multiplier * 0.1)
@@ -162,12 +273,11 @@ def press_key(key_sequence: str, retry_multiplier: int) -> bool:
 
 def type_text(text: str, retry_multiplier: int, delay_ms: str = XDOTOOL_TYPE_DELAY_MS) -> bool:
     """
-    Type an arbitrary string with xdotool. Uses '--' so leading dashes and
-    special characters (@, ., -, etc.) are typed literally, not parsed as
-    options or interpreted as key names.
+    Type an arbitrary string with xdotool.  Uses '--' so leading dashes and
+    special characters (@, ., -, etc.) are typed literally.
     """
     cmd = XDOTOOL_CMD + ["type", "--delay", delay_ms, "--", text]
-    logging.info(f"Typing string of length {len(text)}")
+    logging.info("Typing string of length %d", len(text))
     try:
         result = _run_subprocess(cmd)
         time.sleep(retry_multiplier * 0.1)
@@ -187,48 +297,54 @@ def search_windows_by_name(window_name: str, max_attempts: int, retry_multiplier
             output = subprocess.check_output(cmd, universal_newlines=True).strip()
             windows = output.splitlines()
             if windows:
-                logging.info(f"'{window_name}' window detected with IDs: {windows}")
+                logging.info("'%s' window detected with IDs: %s", window_name, windows)
                 return windows
         except subprocess.CalledProcessError:
             pass
         except FileNotFoundError:
-            logging.error("xdotool command not found.")
+            logging.error("xdotool not found.")
             return None
 
         if attempt < max_attempts - 1:
             logging.warning(
-                f"'{window_name}' window not found (attempt {attempt + 1}/{max_attempts}). Retrying..."
+                "'%s' window not found (attempt %d/%d). Retrying...",
+                window_name, attempt + 1, max_attempts,
             )
-            backoff_time = (
+            backoff = (
                 random.randint(WINDOW_SEARCH_BACKOFF_MIN_FACTOR, WINDOW_SEARCH_BACKOFF_MAX_FACTOR)
                 * (attempt + 1) * retry_multiplier
             )
-            logging.info(f"Backing off for {backoff_time:.2f} seconds before next attempt...")
-            time.sleep(backoff_time)
+            logging.info("Backing off for %.0fs...", backoff)
+            time.sleep(backoff)
 
-    logging.error(f"Failed to find the '{window_name}' window after {max_attempts} attempts.")
+    logging.error("Failed to find '%s' window after %d attempts.", window_name, max_attempts)
     return None
 
 
 def launch_grass_with_retries(max_attempts: int, retry_multiplier: int) -> Optional[subprocess.Popen]:
     wait_time_after_launch = retry_multiplier * GRASS_LAUNCH_WAIT_FACTOR
     for attempt in range(max_attempts):
-        logging.info(f"Launching Grass desktop application... (Attempt {attempt + 1}/{max_attempts})")
+        logging.info("Launching Grass desktop application... (attempt %d/%d)", attempt + 1, max_attempts)
         try:
-            proc = subprocess.Popen([GRASS_EXECUTABLE_PATH])
+            proc = subprocess.Popen([
+                GRASS_EXECUTABLE_PATH,
+                f"--remote-debugging-port={CDP_PORT}",
+                "--remote-allow-origins=*",
+            ])
         except FileNotFoundError:
-            logging.error(f"Grass executable not found at '{GRASS_EXECUTABLE_PATH}'.")
+            logging.error("Grass executable not found at '%s'.", GRASS_EXECUTABLE_PATH)
             return None
 
         time.sleep(wait_time_after_launch)
         if proc.poll() is not None:
             logging.warning(
-                f"Grass process ended prematurely on attempt {attempt + 1} with code {proc.returncode}."
+                "Grass process ended prematurely on attempt %d (code %s).",
+                attempt + 1, proc.returncode,
             )
             if attempt < max_attempts - 1:
                 logging.info("Retrying Grass launch...")
             else:
-                logging.error(f"Failed to start Grass after {max_attempts} attempts.")
+                logging.error("Failed to start Grass after %d attempts.", max_attempts)
                 return None
         else:
             logging.info("Grass application launched successfully.")
@@ -238,13 +354,13 @@ def launch_grass_with_retries(max_attempts: int, retry_multiplier: int) -> Optio
 
 def kill_process(proc: subprocess.Popen) -> None:
     if proc.poll() is None:
-        logging.info(f"Terminating process {proc.pid}...")
+        logging.info("Terminating process %d...", proc.pid)
         proc.terminate()
         try:
             proc.wait(timeout=PROCESS_TERMINATE_TIMEOUT)
-            logging.info(f"Process {proc.pid} terminated gracefully.")
+            logging.info("Process %d terminated.", proc.pid)
         except subprocess.TimeoutExpired:
-            logging.warning(f"Process {proc.pid} did not terminate gracefully. Killing.")
+            logging.warning("Process %d did not terminate; killing.", proc.pid)
             proc.kill()
             proc.wait()
 
@@ -265,25 +381,31 @@ def _get_credentials() -> Tuple[Optional[str], Optional[str]]:
 
 
 def _clear_field(retry_multiplier: int) -> None:
-    """Select-all and delete inside the currently focused input, then start fresh."""
+    """Select-all and delete the currently focused input."""
     press_key("ctrl+a", retry_multiplier)
     press_key("Delete", retry_multiplier)
 
 
+def _click_button(label: str, window_id: str, coord_xy: Tuple[int, int], retry_multiplier: int) -> bool:
+    """
+    Click a button / link by its visible text via CDP; fall back to a
+    window-relative coordinate click if CDP is unavailable or the element
+    is not found.
+    """
+    if cdp_click_by_text(label):
+        return True
+    logging.warning("DOM click for '%s' failed; falling back to coordinate click.", label)
+    return click_window_rel(window_id, *coord_xy, retry_multiplier)
+
+
 def _perform_login_steps(window_id: str, email_username: str, password: str, retry_multiplier: int) -> bool:
     """
-    Drive Grass's current email-first login flow by CLICKING the fields and
-    buttons at known screen positions, instead of relying on autofocus and Tab
-    navigation (which left the email field unfocused — so Ctrl+A selected the
-    whole page — and let Tab+Enter hit the window's close button).
+    Drive Grass's email-first login flow.
 
-      click email -> clear -> type email
-      -> click CONTINUE
-      -> click "Use Password Instead"
-      -> click password -> clear -> type password
-      -> click SIGN IN
-
-    All click targets are window-relative "x,y" offsets, tunable via env.
+    Buttons (CONTINUE, Use Password Instead, SIGN IN) are clicked via CDP so
+    they are found by their DOM text, not by a fixed screen coordinate.
+    Input fields are still focused by coordinate click and filled via xdotool.
+    Coordinate fallbacks are used if CDP is unavailable.
     """
     email_xy = _parse_xy("EMAIL_XY", DEFAULT_EMAIL_XY)
     continue_xy = _parse_xy("CONTINUE_XY", DEFAULT_CONTINUE_XY)
@@ -291,7 +413,7 @@ def _perform_login_steps(window_id: str, email_username: str, password: str, ret
     password_xy = _parse_xy("PASSWORD_XY", DEFAULT_PASSWORD_XY)
     signin_xy = _parse_xy("SIGNIN_XY", DEFAULT_SIGNIN_XY)
 
-    logging.info("Login step 1/5: clicking email field, clearing, typing email...")
+    logging.info("Login step 1/5: clicking email field and typing email...")
     if not click_window_rel(window_id, *email_xy, retry_multiplier):
         return False
     _clear_field(retry_multiplier)
@@ -300,19 +422,19 @@ def _perform_login_steps(window_id: str, email_username: str, password: str, ret
     time.sleep(retry_multiplier * POST_CREDENTIAL_ENTRY_WAIT_FACTOR)
     capture("step1-email-typed")
 
-    logging.info("Login step 2/5: clicking CONTINUE...")
-    if not click_window_rel(window_id, *continue_xy, retry_multiplier):
+    logging.info("Login step 2/5: clicking CONTINUE (DOM-based, coord fallback)...")
+    if not _click_button("Continue", window_id, continue_xy, retry_multiplier):
         return False
     time.sleep(retry_multiplier * POST_LOGIN_STEP_WAIT_FACTOR)
     capture("step2-after-continue")
 
-    logging.info("Login step 3/5: clicking 'Use Password Instead'...")
-    if not click_window_rel(window_id, *usepass_xy, retry_multiplier):
+    logging.info("Login step 3/5: clicking 'Use Password Instead' (DOM-based, coord fallback)...")
+    if not _click_button("Use Password Instead", window_id, usepass_xy, retry_multiplier):
         return False
     time.sleep(retry_multiplier * POST_LOGIN_STEP_WAIT_FACTOR)
     capture("step3-after-use-password")
 
-    logging.info("Login step 4/5: clicking password field, clearing, typing password...")
+    logging.info("Login step 4/5: clicking password field and typing password...")
     if not click_window_rel(window_id, *password_xy, retry_multiplier):
         return False
     _clear_field(retry_multiplier)
@@ -321,8 +443,8 @@ def _perform_login_steps(window_id: str, email_username: str, password: str, ret
     time.sleep(retry_multiplier * POST_CREDENTIAL_ENTRY_WAIT_FACTOR)
     capture("step4-password-typed")
 
-    logging.info("Login step 5/5: clicking SIGN IN...")
-    if not click_window_rel(window_id, *signin_xy, retry_multiplier):
+    logging.info("Login step 5/5: clicking SIGN IN (DOM-based, coord fallback)...")
+    if not _click_button("Sign In", window_id, signin_xy, retry_multiplier):
         return False
     time.sleep(retry_multiplier * POST_LOGIN_ATTEMPT_WAIT_FACTOR)
     capture("step5-after-signin")
@@ -338,31 +460,34 @@ def configure_grass(
 ) -> bool:
     configured_flag_path = os.path.expanduser(CONFIGURED_FLAG_FILE)
     if os.path.exists(configured_flag_path):
-        logging.info(f"Grass already configured (flag found: {configured_flag_path}).")
+        logging.info("Grass already configured (flag found: %s).", configured_flag_path)
         return True
 
     if not email_username or not password:
-        logging.error("Credentials not provided to configure_grass. Cannot autologin.")
+        logging.error("Credentials not provided. Cannot autologin.")
         return False
 
     current_grass_proc = grass_proc_ref
 
     for attempt in range(max_attempts):
-        logging.info(f"Attempting Grass configuration (Attempt {attempt + 1}/{max_attempts})...")
+        logging.info("Attempting Grass configuration (attempt %d/%d)...", attempt + 1, max_attempts)
 
         windows = search_windows_by_name(GRASS_WINDOW_NAME, max_attempts, retry_multiplier)
         if windows is None:
             if current_grass_proc.poll() is not None:
-                logging.info("Grass process died. Attempting relaunch for configuration...")
+                logging.info("Grass process died. Relaunching...")
                 new_proc = launch_grass_with_retries(max_attempts, retry_multiplier)
                 if new_proc:
                     current_grass_proc = new_proc
                 else:
-                    logging.error("Failed to relaunch Grass. Configuration aborted.")
+                    logging.error("Relaunch failed. Aborting.")
                     return False
             continue
 
         time.sleep(retry_multiplier * GRASS_INTERFACE_LOAD_WAIT_FACTOR)
+
+        logging.info("Waiting for CDP endpoint (Electron remote debugging)...")
+        _cdp_wait_ready(timeout_s=30)
 
         windows = search_windows_by_name(GRASS_WINDOW_NAME, 1, 1)
         if not windows:
@@ -376,9 +501,9 @@ def configure_grass(
             continue
 
         last_window_id = windows[-1]
-        logging.info(f"Focusing the Grass main window (ID: {last_window_id})...")
+        logging.info("Focusing Grass window (ID: %s)...", last_window_id)
         if _run_subprocess(XDOTOOL_CMD + ["windowfocus", "--sync", last_window_id]).returncode != 0:
-            logging.warning("Failed to focus Grass window. Retrying.")
+            logging.warning("Failed to focus window. Retrying.")
             if current_grass_proc.poll() is not None:
                 new_proc = launch_grass_with_retries(max_attempts, retry_multiplier)
                 if new_proc:
@@ -389,22 +514,22 @@ def configure_grass(
 
         time.sleep(retry_multiplier * POST_FOCUS_WAIT_FACTOR)
 
-        logging.info("Performing login steps (email-first flow, click-based)...")
+        logging.info("Performing login steps...")
         if not _perform_login_steps(last_window_id, email_username, password, retry_multiplier):
-            logging.warning("A login step failed. Retrying configuration attempt.")
+            logging.warning("A login step failed. Retrying.")
             continue
 
-        logging.info("Grass configuration steps completed.")
+        logging.info("Grass login steps completed.")
         try:
             with open(configured_flag_path, "w") as f:
                 f.write(time.strftime("%Y-%m-%d %H:%M:%S"))
-            logging.info(f"Created configuration flag: {configured_flag_path}")
+            logging.info("Created configuration flag: %s", configured_flag_path)
             return True
         except IOError as e:
-            logging.error(f"Failed to write configuration flag file: {e}")
+            logging.error("Failed to write configuration flag: %s", e)
             return False
 
-    logging.error(f"Failed to configure Grass after {max_attempts} attempts.")
+    logging.error("Failed to configure Grass after %d attempts.", max_attempts)
     return False
 
 
@@ -415,11 +540,11 @@ def main() -> None:
     try:
         max_retry_multiplier = int(max_retry_multiplier_str)
     except ValueError:
-        logging.warning(f"Invalid MAX_RETRY_MULTIPLIER: '{max_retry_multiplier_str}'. Using default.")
+        logging.warning("Invalid MAX_RETRY_MULTIPLIER '%s'. Using default.", max_retry_multiplier_str)
         max_retry_multiplier = DEFAULT_MAX_RETRY_MULTIPLIER
 
     initial_wait = max_retry_multiplier * INITIAL_X_SERVER_WAIT_FACTOR
-    logging.info(f"Initial wait of {initial_wait}s to allow X server to stabilize.")
+    logging.info("Waiting %ds for X server to stabilise...", initial_wait)
     time.sleep(initial_wait)
 
     logging.info("Starting Grass Desktop script...")
@@ -435,30 +560,28 @@ def main() -> None:
     launch_configure_max_attempts = max_retry_multiplier
     grass_proc = launch_grass_with_retries(launch_configure_max_attempts, max_retry_multiplier)
     if grass_proc is None:
-        logging.error("Grass application failed to launch. Exiting script.")
+        logging.error("Grass application failed to launch. Exiting.")
         sys.exit(1)
 
     if should_try_autologin:
-        logging.info("Proceeding with automated Grass configuration (autologin)...")
+        logging.info("Proceeding with automated login (DOM-based button clicks via CDP)...")
         if configure_grass(grass_proc, email_username, password,
                            launch_configure_max_attempts, max_retry_multiplier):
-            logging.info("Grass configuration (autologin) reported success.")
+            logging.info("Autologin reported success.")
         else:
             logging.error(
-                "Automated autologin failed. Switching to manual login mode. "
-                "Grass will remain running; log in via the noVNC window."
+                "Autologin failed. Grass is still running — log in manually via noVNC (port 6080)."
             )
     else:
-        logging.info("Autologin disabled or credentials missing. Waiting for manual interaction.")
+        logging.info("Autologin disabled or credentials missing. Waiting for manual login via noVNC.")
 
-    logging.info(f"Grass Desktop is now running (pid {grass_proc.pid}).")
-    logging.info("Interact with the noVNC window for manual login if needed.")
+    logging.info("Grass Desktop is running (pid %d).", grass_proc.pid)
 
     try:
         grass_proc.wait()
-        logging.info(f"Grass process {grass_proc.pid} exited with code {grass_proc.returncode}.")
+        logging.info("Grass process %d exited (code %s).", grass_proc.pid, grass_proc.returncode)
     except KeyboardInterrupt:
-        logging.info("Script interrupted. Terminating Grass...")
+        logging.info("Interrupted. Terminating Grass...")
         kill_process(grass_proc)
     sys.exit(grass_proc.returncode if grass_proc.returncode is not None else 0)
 
