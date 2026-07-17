@@ -48,8 +48,28 @@ PROCESS_TERMINATE_TIMEOUT = 5
 XDOTOOL_CMD = ["xdotool"]
 XDOTOOL_TYPE_DELAY_MS = "125"
 
-# How many Tab presses on the code screen land on "Use Password Instead".
-DEFAULT_PASSWORD_LINK_TABS = 7
+# Tab navigation counts (all tunable via env / add-on options).
+DEFAULT_CONTINUE_TABS = 1       # email field -> CONTINUE button
+DEFAULT_PASSWORD_LINK_TABS = 7  # code screen -> "Use Password Instead"
+DEFAULT_SIGNIN_TABS = 1         # password field -> SIGN IN button
+
+
+def _screenshots_enabled() -> bool:
+    return os.getenv("DEBUG_SCREENSHOTS", "false").lower() == "true"
+
+
+def capture(step: str) -> None:
+    """Save a screenshot of the whole screen to /data for debugging (if enabled)."""
+    if not _screenshots_enabled():
+        return
+    path = f"/data/grass-{step}.png"
+    try:
+        subprocess.run(["scrot", "-o", path], check=False)
+        logging.info(f"Saved screenshot: {path}")
+    except FileNotFoundError:
+        logging.warning("scrot not installed; cannot save screenshot.")
+    except Exception as e:  # noqa: BLE001
+        logging.warning(f"Screenshot failed: {e}")
 
 
 def setup_logging() -> None:
@@ -185,43 +205,68 @@ def _get_credentials() -> Tuple[Optional[str], Optional[str]]:
     return email_username, password
 
 
+def _clear_field(retry_multiplier: int) -> None:
+    """Select-all and delete, so a focused input starts empty before typing."""
+    press_key("ctrl+a", retry_multiplier)
+    press_key("Delete", retry_multiplier)
+
+
+def _tab_to_and_activate(tabs: int, retry_multiplier: int) -> bool:
+    """Press Tab `tabs` times to move focus onto a button/link, then activate it."""
+    for _ in range(tabs):
+        if not press_key("Tab", retry_multiplier):
+            return False
+    return press_key("Return", retry_multiplier)
+
+
 def _perform_login_steps(email_username: str, password: str, retry_multiplier: int) -> bool:
     """
-    Drive Grass's current email-first login flow with keyboard automation:
+    Drive Grass's current email-first login flow with keyboard automation.
 
-      email field (autofocused) -> type email -> Return (Continue)
+    IMPORTANT: this form does NOT submit on Enter — the CONTINUE / SIGN IN
+    buttons must be focused (via Tab) and activated. Pressing Return while the
+    email field is focused does nothing, which previously left the flow stuck
+    on the email screen.
+
+      email field (autofocused) -> type email -> Tab to CONTINUE -> Return
       -> Tab N times to "Use Password Instead" -> Return
-      -> type password -> Return (Sign In)
+      -> type password -> Tab to SIGN IN -> Return
     """
+    continue_tabs = int(os.getenv("CONTINUE_TABS", str(DEFAULT_CONTINUE_TABS)))
     password_link_tabs = int(os.getenv("PASSWORD_LINK_TABS", str(DEFAULT_PASSWORD_LINK_TABS)))
+    signin_tabs = int(os.getenv("SIGNIN_TABS", str(DEFAULT_SIGNIN_TABS)))
 
-    logging.info("Login step 1/4: typing email into the (autofocused) email field...")
+    logging.info("Login step 1/4: clearing and typing email into the email field...")
+    _clear_field(retry_multiplier)
     if not type_text(email_username, retry_multiplier):
         return False
     time.sleep(retry_multiplier * POST_CREDENTIAL_ENTRY_WAIT_FACTOR)
+    capture("step1-email-typed")
 
-    logging.info("Login step 2/4: pressing Return to Continue...")
-    if not press_key("Return", retry_multiplier):
+    logging.info(f"Login step 2/4: Tab x{continue_tabs} to CONTINUE, then Return...")
+    if not _tab_to_and_activate(continue_tabs, retry_multiplier):
         return False
     time.sleep(retry_multiplier * POST_LOGIN_STEP_WAIT_FACTOR)
+    capture("step2-after-continue")
 
     logging.info(
         f"Login step 3/4: Tab x{password_link_tabs} to 'Use Password Instead', then Return..."
     )
-    for _ in range(password_link_tabs):
-        if not press_key("Tab", retry_multiplier):
-            return False
-    if not press_key("Return", retry_multiplier):
+    if not _tab_to_and_activate(password_link_tabs, retry_multiplier):
         return False
     time.sleep(retry_multiplier * POST_LOGIN_STEP_WAIT_FACTOR)
+    capture("step3-after-use-password")
 
-    logging.info("Login step 4/4: typing password and pressing Return to Sign In...")
+    logging.info(f"Login step 4/4: typing password, Tab x{signin_tabs} to SIGN IN, then Return...")
+    _clear_field(retry_multiplier)
     if not type_text(password, retry_multiplier):
         return False
     time.sleep(retry_multiplier * POST_CREDENTIAL_ENTRY_WAIT_FACTOR)
-    if not press_key("Return", retry_multiplier):
+    capture("step4-password-typed")
+    if not _tab_to_and_activate(signin_tabs, retry_multiplier):
         return False
     time.sleep(retry_multiplier * POST_LOGIN_ATTEMPT_WAIT_FACTOR)
+    capture("step5-after-signin")
     return True
 
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.1.3
+
+- **Fix auto-login getting stuck on the email screen.** Grass's login form
+  does not submit on Enter — the CONTINUE / SIGN IN buttons must be focused
+  and activated. Previously pressing Return in the email field did nothing,
+  so the flow never advanced and the password ended up typed into the email
+  field. Now the script Tabs to CONTINUE (and to SIGN IN) and presses Return
+  to click them, and clears each field before typing.
+- **New tunable tab counts:** `continue_tabs` (default 1) and `signin_tabs`
+  (default 1), alongside the existing `password_link_tabs` (default 7).
+- **New `debug_screenshots` option:** saves a screenshot of each login step
+  to `/data/grass-step*.png` (via `scrot`) so the exact app state at each
+  keystroke can be inspected.
+
 ## 2.1.2
 
 - **Fix auto-login.** Ships a corrected entrypoint script that replaces the
