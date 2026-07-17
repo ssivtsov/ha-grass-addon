@@ -58,11 +58,24 @@ def _screenshots_enabled() -> bool:
     return os.getenv("DEBUG_SCREENSHOTS", "false").lower() == "true"
 
 
+def _screenshot_dir() -> str:
+    """
+    Prefer /share/grass-debug (browsable via the File editor / Samba add-ons);
+    fall back to /data if /share is not mapped.
+    """
+    base = "/share/grass-debug" if os.path.isdir("/share") else "/data"
+    try:
+        os.makedirs(base, exist_ok=True)
+    except OSError:
+        base = "/data"
+    return base
+
+
 def capture(step: str) -> None:
-    """Save a screenshot of the whole screen to /data for debugging (if enabled)."""
+    """Save a screenshot of the whole screen for debugging (if enabled)."""
     if not _screenshots_enabled():
         return
-    path = f"/data/grass-{step}.png"
+    path = os.path.join(_screenshot_dir(), f"grass-{step}.png")
     try:
         subprocess.run(["scrot", "-o", path], check=False)
         logging.info(f"Saved screenshot: {path}")

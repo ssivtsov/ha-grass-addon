@@ -34,8 +34,9 @@ configuration:
   debug_screenshots:
     name: Debug screenshots
     description: >-
-      Save a screenshot of each auto-login step to /data (grass-step*.png)
-      so you can see exactly what the app showed when credentials were typed.
+      Save a screenshot of each auto-login step to /share/grass-debug/
+      (grass-step*.png), browsable with the File editor / Samba add-ons, so
+      you can see exactly what the app showed when credentials were typed.
       Turn off once debugging is done.
   vnc_password:
     name: VNC password

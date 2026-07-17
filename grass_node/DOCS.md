@@ -53,14 +53,30 @@ the add-on drives Grass's login for you: it types your email, presses
 **Sign In**. A successful login is saved to `/data`, so it only happens once —
 subsequent starts skip straight past the login.
 
-### Tuning `password_link_tabs`
+### Tuning the tab counts
 
-Reaching the **Use Password Instead** link on the code screen is done by
-pressing Tab a fixed number of times (default `7`). Grass may change how many
-focusable elements precede that link. If auto-login types your password into
-the wrong place, open the noVNC web UI, watch where the focus lands after the
-email step, and adjust `password_link_tabs` up or down by one or two, then
-restart the add-on. No rebuild needed.
+Auto-login navigates with a fixed number of Tab presses:
+`continue_tabs` (email → CONTINUE, default 1), `password_link_tabs`
+(code screen → "Use Password Instead", default 7), and `signin_tabs`
+(password → SIGN IN, default 1). If Grass changes its page and a step lands
+on the wrong element, adjust the relevant count by one or two and restart the
+add-on. No rebuild needed.
+
+### Seeing what auto-login did (debug screenshots)
+
+Set `debug_screenshots: true` to save a screenshot of each login step to
+`/share/grass-debug/`:
+
+- `grass-step1-email-typed.png`
+- `grass-step2-after-continue.png`
+- `grass-step3-after-use-password.png`
+- `grass-step4-password-typed.png`
+- `grass-step5-after-signin.png`
+
+Browse `/share/grass-debug/` with the **File editor**, **Studio Code Server**
+or **Samba** add-on. Turn the option off again once you're done — the shots
+can contain the login page. (If `/share` isn't available they fall back to the
+add-on's `/data`.)
 
 ## Manual login (fallback)
 
